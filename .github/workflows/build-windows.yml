@@ -23,8 +23,10 @@ jobs:
           Push-Location neo-ahk
           try {
             $out = Join-Path $env:RUNNER_TEMP 'neo20-noted.exe'
-            & (Join-Path $tool 'Compiler/Ahk2Exe.exe') /in 'neo20-all.ahk' /out $out /bin (Join-Path $tool 'Compiler/Unicode 64-bit.bin') /icon 'neo_enabled.ico'
-            if ($LASTEXITCODE -ne 0 -or -not (Test-Path $out)) { throw "Ahk2Exe failed ($LASTEXITCODE)" }
+            $bin = Join-Path $tool 'Compiler/Unicode 64-bit.bin'
+            $compiler = Join-Path $tool 'Compiler/Ahk2Exe.exe'
+            $process = Start-Process -FilePath $compiler -ArgumentList @('/in', 'neo20-all.ahk', '/out', $out, '/bin', ('"' + $bin + '"'), '/icon', 'neo_enabled.ico') -Wait -PassThru
+            if ($process.ExitCode -ne 0 -or -not (Test-Path $out)) { throw "Ahk2Exe failed ($($process.ExitCode))" }
             Write-Host "Compiled Windows executable: $((Get-Item $out).Length) bytes"
           } finally {
             Pop-Location

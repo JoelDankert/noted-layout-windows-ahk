@@ -91,6 +91,7 @@ class NotedMappingTests(unittest.TestCase):
         text = workflow.read_text(encoding='utf-8')
         self.assertIn('windows-latest', text)
         self.assertIn('Ahk2Exe.exe', text)
+        self.assertIn('Start-Process', text)
         self.assertIn('6f3663f7cdd25063c8c8728f5d9b07813ced8780522fd1f124ba539e2854215f', text)
         self.assertIn('neo20-all.ahk', text)
 

@@ -1,4 +1,16 @@
-# neo2-layout-windows-ahk
+# noted-layout-windows-ahk
+
+Fork von [kingdase/neo2-layout-windows-ahk](https://github.com/kingdase/neo2-layout-windows-ahk) mit zusätzlicher [Noted](https://github.com/dariogoetz/noted-layout)-Variante. Die vorhandenen Varianten Neo, NordTast, AdNW, DIEgO und K.O,Y bleiben erhalten. Die Noted-Zeichenbelegung folgt `dariogoetz/noted-layout` (`xkb/noted`, Revision `20f43c1a27736a5f894f6fe32620d41e629a5aab`); rechte Mod3-, ß- und Akzenttaste sind entsprechend mitverschoben. Die bestehende AHK-/Neo-Compose-Engine und ihre Sonderfunktionen bleiben erhalten. Daher ist die Windows-AHK-Implementierung keine vollständige XKB-Installation.
+
+## Ohne Installation unter Windows
+
+Die **bereitgestellte ZIP** vollständig entpacken und `portable\start-noted.cmd` doppelklicken. Sie verwendet, wenn vorhanden, die enthaltene `neo20-noted.exe`; sonst den offiziell veröffentlichten portablen **AutoHotkey v1.1.37.02**-Interpreter unter `runtime\AutoHotkeyU64.exe` zusammen mit `neo-ahk\neo20-all.ahk`. AutoHotkey muss nicht installiert werden. Der portable Start wählt Noted für diesen Lauf, ohne die gespeicherte Layoutwahl zu überschreiben. Das Windows-Eingabelayout muss dabei **Deutsch (QWERTZ)** sein. Nur eine Instanz eines Neo-/Noted-Tastaturtools gleichzeitig laufen lassen.
+
+`Mod3+F12` schaltet Neo → NordTast → AdNW → DIEgO → K.O,Y → Noted → Neo. `Mod4+F12` speichert die aktuelle Variante in `%APPDATA%\Neo2\Neo2.ini`. Zum Umschalten **aus Noted** vorsichtshalber die linke Mod3-Taste (CapsLock) verwenden, bis das Verhalten der verschobenen rechten Mod3-Taste auf Windows getestet ist. Der portable Starter startet unabhängig von dieser gespeicherten Wahl jedes Mal mit Noted; für die gespeicherte Wahl `neo-ahk\neo20-all.ahk` mit AutoHotkey v1 ohne Argument starten. Zum Beenden das Taskleistensymbol von AutoHotkey verwenden.
+
+Der Quellcode kann auf Windows auch mit dem GitHub-Actions-Workflow `.github/workflows/build-windows.yml` ohne Installation zu einer EXE gebaut werden. Die ZIP bringt den portablen Interpreter als Rückfalloption mit. Die AHK-Tastenereignisse selbst wurden nicht auf Windows getestet; die Linux-Tests prüfen die Noted-Tasten anhand des offiziellen XKB-Quelltexts (`python3 -m unittest discover -s tests -v`). Original- und Noted-Quellen stehen unter GPL-3.0; der mitgelieferte AutoHotkey-Lizenztext liegt unter `runtime\license.txt`.
+
+## Hinweise zum Originalprojekt
 
 Dies ist ein Extrakt von github.com/neo-layout/neo-layout/tree/master/windows/neo-vars
 

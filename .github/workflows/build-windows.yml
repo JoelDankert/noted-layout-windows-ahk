@@ -1,0 +1,36 @@
+name: Build Windows portable EXE
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  compile:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile with pinned portable AutoHotkey v1
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $archive = Join-Path $env:RUNNER_TEMP 'AutoHotkey_1.1.37.02.zip'
+          $tool = Join-Path $env:RUNNER_TEMP 'AutoHotkey-v1'
+          Invoke-WebRequest 'https://github.com/AutoHotkey/AutoHotkey/releases/download/v1.1.37.02/AutoHotkey_1.1.37.02.zip' -OutFile $archive
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne '6f3663f7cdd25063c8c8728f5d9b07813ced8780522fd1f124ba539e2854215f') {
+            throw 'AutoHotkey release archive checksum mismatch'
+          }
+          Expand-Archive $archive -DestinationPath $tool
+          Push-Location neo-ahk
+          try {
+            $out = Join-Path $env:RUNNER_TEMP 'neo20-noted.exe'
+            & (Join-Path $tool 'Compiler/Ahk2Exe.exe') /in 'neo20-all.ahk' /out $out /bin (Join-Path $tool 'Compiler/Unicode 64-bit.bin') /icon 'neo_enabled.ico'
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path $out)) { throw "Ahk2Exe failed ($LASTEXITCODE)" }
+            Write-Host "Compiled Windows executable: $((Get-Item $out).Length) bytes"
+          } finally {
+            Pop-Location
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neo20-noted-windows-exe
+          path: ${{ runner.temp }}\neo20-noted.exe
+          if-no-files-found: error

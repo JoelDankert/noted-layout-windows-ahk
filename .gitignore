@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+runtime/
+neo20-noted.exe

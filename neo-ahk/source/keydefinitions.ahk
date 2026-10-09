@@ -244,6 +244,23 @@ Change1256Layout(newlayoutstring) {
   }
 }
 
+Change12Layout(newlayoutstring) {
+  global
+  if (strlen(newlayoutstring) != 33) {
+    MsgBox,Falscher Layoutstring, zu wenige Zeichen!
+    return
+  }
+  layoutstring := ""
+  layoutstringpos := 1
+  while (layoutstringpos <= 33) {
+    e1a := substr(newlayoutstring,layoutstringpos,1)
+    e1 := EncodeUniComposeA(e1a)
+    ED12(LOSP%layoutstringpos%, LOSEC%e1%, e1a, LOSE2%e1%)
+    layoutstring .= e1a
+    layoutstringpos := layoutstringpos + 1
+  }
+}
+
 Change1256LayoutNeo20() {
   global
   Change1256Layout(neo20layoutstring)

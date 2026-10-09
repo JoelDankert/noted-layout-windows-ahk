@@ -34,6 +34,7 @@ SetWorkingDir, %A_ScriptDir%
 #include    source\lernmodus.ahk
 #include    source\nordtast.ahk
 #include    source\qwertz.ahk
+#include    source\noted.ahk
 #include    source\tools.ahk
 
 ; individuelle Einstellungen

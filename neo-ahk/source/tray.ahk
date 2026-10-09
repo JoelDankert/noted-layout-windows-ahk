@@ -103,14 +103,16 @@ TrayAbout() {
   Dazu sind keine Administratorrechte nötig.`n
   Wenn Autohotkey aktiviert ist, werden alle Tastendrucke
   abgefangen und statt dessen eine Übersetzung weitergeschickt.`n
-  Dies geschieht transparent für den Anwender,
-  es muss nichts installiert werden.`n
+  Dafür braucht Neo keinen installierten Tastaturtreiber.
+  Der AutoHotkey-v1-Interpreter muss jedoch vorhanden sein.`n
   Die Zeichenübersetzung kann leicht über das Icon im
   Systemtray deaktiviert werden.`n
   HotKeys:`n
   M4 + F1: Bildschirmtastatur anzeigen/ausblenden
   M3 + F6: Wechsel zwischen Neo und QWERTZ
-  M4 + F6: Speichere Layout
+  M4 + F6: Speichere QWERTZ-Auswahl
+  M3 + F7: Wechsel zwischen Neo und Noted (nur Ebenen 1/2)
+  M4 + F7: Speichere Noted-Auswahl
   )
 }
 

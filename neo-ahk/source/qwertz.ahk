@@ -19,6 +19,7 @@ CharProcQwertT() {
 }
 
 CharProcQwerT1() {
+  RestoreNotedKeys()
   ; Tastaturbelegungsvariante QWERTZ aktivieren
   Change1256Layout("ßqwertzuiopüasdfghjklöäyxcvbnm,.-")
 }
@@ -32,6 +33,8 @@ CharProcQwerts() {
   global
 
   IniWrite,%isQwertz%,%ini%,Global,isQwertz
+  if (!ErrorLevel && isQwertz)
+    IniDelete,%ini%,Global,isNoted
 
   if ErrorLevel
     TrayTip,Qwertz-Belegungsvariante,Beim Speichern der Variante ist ein Fehler aufgetreten.,10,1

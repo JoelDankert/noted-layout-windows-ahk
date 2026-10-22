@@ -1,6 +1,6 @@
 # noted-layout-windows-ahk
 
-Native **AutoHotkey v2** implementation of Neo 2 and standard Noted for Windows. Neo remains the default unless a previously saved variant exists. The standard Noted data follows `dariogoetz/noted-layout`’s `xkb/noted` at commit `20f43c1a27736a5f894f6fe32620d41e629a5aab` (fixture: `tests/fixtures/noted.xkb`).
+Native **AutoHotkey v2** implementation of Neo 2 and standard Noted for Windows. Full standard Noted is the default when no layout preference has been saved; explicitly saved Neo and other variants remain selected on later starts. The standard Noted data follows `dariogoetz/noted-layout`’s `xkb/noted` at commit `20f43c1a27736a5f894f6fe32620d41e629a5aab` (fixture: `tests/fixtures/noted.xkb`).
 
 ## Start
 

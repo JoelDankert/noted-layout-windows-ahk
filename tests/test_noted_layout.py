@@ -92,6 +92,14 @@ class ActiveV2Tests(unittest.TestCase):
         self.assertIn("ExitApp(1)", ENTRY)
         self.assertIn("ExitApp(0)", ENTRY)
 
+    def test_layout_preference_default_and_explicit_persistence(self):
+        self.assertIn('IniRead(IniPath, "Global", "LayoutVariant", "")', ENTRY)
+        self.assertIn('IniWrite(CurrentVariant, IniPath, "Global", "LayoutVariant")', ENTRY)
+        self.assertIn('return "Noted"', ENTRY)
+        self.assertIn('VariantFromPreferences("Neo", "1", "1", "4") = "Neo"', ENTRY)
+        for name in ("Noted", "QWERTZ", "NordTast", "AdNW", "DIEgO", "K.O,Y"):
+            self.assertIn(f'VariantFromPreferences("{name}",', ENTRY)
+
     def test_script_only_distribution(self):
         self.assertFalse(any(ROOT.rglob("*.exe")))
         self.assertFalse(any(ROOT.rglob("*.cmd")))

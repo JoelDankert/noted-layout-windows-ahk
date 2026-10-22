@@ -442,13 +442,17 @@ AddNoted(map, sc, caps, e1,e2,e3,e4,e5,e6,e7,e8) {
 
 LoadPreference() {
     global IniPath
+    explicit := IniRead(IniPath, "Global", "LayoutVariant", "")
     noted := IniRead(IniPath, "Global", "isNoted", "0")
     qwertz := IniRead(IniPath, "Global", "isQwertz", "0")
     nord := IniRead(IniPath, "Global", "isNordTast", "0")
-    SwitchVariant(VariantFromPreferences(noted, qwertz, nord), false)
+    SwitchVariant(VariantFromPreferences(explicit, noted, qwertz, nord), false)
 }
 
-VariantFromPreferences(noted, qwertz, nord) {
+VariantFromPreferences(explicit, noted, qwertz, nord) {
+    for name in ["Neo","Noted","QWERTZ","NordTast","AdNW","DIEgO","K.O,Y"]
+        if explicit = name
+            return name
     if noted = "1"
         return "Noted"
     if qwertz = "1"
@@ -456,7 +460,7 @@ VariantFromPreferences(noted, qwertz, nord) {
     index := nord + 0
     if index >= 1 && index <= 4
         return ["NordTast","AdNW","DIEgO","K.O,Y"][index]
-    return "Neo"
+    return "Noted"
 }
 
 SaveVariant() {
@@ -465,6 +469,7 @@ SaveVariant() {
     IniDelete(IniPath, "Global", "isNoted")
     IniDelete(IniPath, "Global", "isQwertz")
     IniDelete(IniPath, "Global", "isNordTast")
+    IniWrite(CurrentVariant, IniPath, "Global", "LayoutVariant")
     if CurrentVariant = "Noted"
         IniWrite(1, IniPath, "Global", "isNoted")
     else if CurrentVariant = "QWERTZ"
@@ -586,12 +591,21 @@ RunSelfTest() {
     Check(failures, ShortcutOutputSpec("c") = "{Blind}{c}"
         && ShortcutOutputSpec("c", true) = "{Blind}+{c}"
         && ShortcutOutputSpec("{") = "{Blind}{{}", "shifted shortcut spec/escaping/Blind modifiers")
-    Check(failures, VariantFromPreferences("0", "0", "1") = "NordTast"
-        && VariantFromPreferences("0", "0", "2") = "AdNW"
-        && VariantFromPreferences("0", "0", "3") = "DIEgO"
-        && VariantFromPreferences("0", "0", "4") = "K.O,Y", "preference migration variants")
-    Check(failures, VariantFromPreferences("1", "1", "4") = "Noted"
-        && VariantFromPreferences("0", "1", "4") = "QWERTZ", "preference precedence")
+    Check(failures, VariantFromPreferences("", "0", "0", "0") = "Noted"
+        && VariantFromPreferences("invalid", "0", "0", "0") = "Noted", "no-preference Noted fallback")
+    Check(failures, VariantFromPreferences("Neo", "1", "1", "4") = "Neo"
+        && VariantFromPreferences("Noted", "0", "0", "0") = "Noted", "explicit Neo/Noted save-load")
+    Check(failures, VariantFromPreferences("QWERTZ", "0", "0", "0") = "QWERTZ"
+        && VariantFromPreferences("NordTast", "0", "0", "0") = "NordTast"
+        && VariantFromPreferences("AdNW", "0", "0", "0") = "AdNW"
+        && VariantFromPreferences("DIEgO", "0", "0", "0") = "DIEgO"
+        && VariantFromPreferences("K.O,Y", "0", "0", "0") = "K.O,Y", "explicit other variants")
+    Check(failures, VariantFromPreferences("", "0", "0", "1") = "NordTast"
+        && VariantFromPreferences("", "0", "0", "2") = "AdNW"
+        && VariantFromPreferences("", "0", "0", "3") = "DIEgO"
+        && VariantFromPreferences("", "0", "0", "4") = "K.O,Y", "preference migration variants")
+    Check(failures, VariantFromPreferences("", "1", "1", "4") = "Noted"
+        && VariantFromPreferences("", "0", "1", "4") = "QWERTZ", "legacy preference precedence")
     if failures.Length {
         report := ""
         for failure in failures

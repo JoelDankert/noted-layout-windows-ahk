@@ -199,10 +199,14 @@ KeyDown(key, *) {
     if HandleVariantShortcut(key, layer)
         return
     if ShortcutModifierDown() {
-        ShortcutOutput(row[2])
+        ShortcutOutput(ModifiedShortcutValue(row, value))
         return
     }
     OutputToken(value)
+}
+
+ModifiedShortcutValue(row, resolvedValue) {
+    return ActionSpec(resolvedValue)[1] != "none" ? resolvedValue : row[2]
 }
 
 ShortcutModifierDown() {
@@ -214,11 +218,18 @@ ShortcutModifierDown() {
 }
 
 ShortcutOutput(value) {
-    if StrLen(value) = 1
+    if ActionSpec(value)[1] != "none"
+        SendAction(value)
+    else if StrLen(value) = 1
         Send(ShortcutOutputSpec(value))
 }
 
 ShortcutOutputSpec(value, explicitShift := false) {
+    action := ActionSpec(value)
+    if action[1] = "key"
+        return "{Blind}" (explicitShift || action[3] ? "+" : "") "{" action[2] "}"
+    if StrLen(value) != 1
+        return ""
     if value = "{"
         key := "{{}"
     else if value = "}"
@@ -306,6 +317,10 @@ ActionSpec(value) {
         "S__N_Dn", "NumpadDown", "S__N_Ri", "NumpadRight", "S__N_Le", "NumpadLeft",
         "S__NPUp", "NumpadPgUp", "S__NPDn", "NumpadPgDn", "S__NHom", "NumpadHome",
         "S__NEnd", "NumpadEnd", "S__NClr", "NumpadClear")
+    static controls := Map(Chr(8), "Backspace", Chr(9), "Tab", Chr(10), "Enter",
+        Chr(13), "Enter", Chr(27), "Escape")
+    if controls.Has(value)
+        return ["key", controls[value], false]
     if value = "S__Comp"
         return ["compose", "", false]
     if actions.Has(value)
@@ -591,6 +606,20 @@ RunSelfTest() {
     Check(failures, ShortcutOutputSpec("c") = "{Blind}{c}"
         && ShortcutOutputSpec("c", true) = "{Blind}+{c}"
         && ShortcutOutputSpec("{") = "{Blind}{{}", "shifted shortcut spec/escaping/Blind modifiers")
+    actionRow := [1,"c","C","S__Left","S__Back","",Chr(9),"S___Del",Chr(13)]
+    Check(failures, ShortcutOutputSpec(ModifiedShortcutValue(actionRow, "S__Back")) = "{Blind}{Backspace}",
+        "Ctrl+Backspace action shortcut spec")
+    Check(failures, ShortcutOutputSpec(ModifiedShortcutValue(actionRow, "S___Del")) = "{Blind}{Delete}"
+        && ShortcutOutputSpec(ModifiedShortcutValue(actionRow, Chr(9))) = "{Blind}{Tab}"
+        && ShortcutOutputSpec(ModifiedShortcutValue(actionRow, Chr(13))) = "{Blind}{Enter}"
+        && ShortcutOutputSpec(ModifiedShortcutValue(actionRow, "S__Left")) = "{Blind}{Left}",
+        "modified delete/tab/enter/navigation action specs")
+    Check(failures, ShortcutOutputSpec(Chr(8)) = "{Blind}{Backspace}"
+        && ShortcutOutputSpec(Chr(10)) = "{Blind}{Enter}"
+        && ShortcutOutputSpec(Chr(27)) = "{Blind}{Escape}", "native control action specs")
+    Check(failures, ModifiedShortcutValue(actionRow, "C") = "c"
+        && ShortcutOutputSpec(ModifiedShortcutValue(actionRow, "C")) = "{Blind}{c}",
+        "Ctrl+C logical-letter shortcut unchanged")
     Check(failures, VariantFromPreferences("", "0", "0", "0") = "Noted"
         && VariantFromPreferences("invalid", "0", "0", "0") = "Noted", "no-preference Noted fallback")
     Check(failures, VariantFromPreferences("Neo", "1", "1", "4") = "Neo"

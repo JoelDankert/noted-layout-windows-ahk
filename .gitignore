@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 runtime/
 neo20-noted.exe
+neo-ahk/neo20-self-test.txt

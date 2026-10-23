@@ -92,6 +92,16 @@ class ActiveV2Tests(unittest.TestCase):
         self.assertIn("ExitApp(1)", ENTRY)
         self.assertIn("ExitApp(0)", ENTRY)
 
+    def test_caps_lock_is_forced_off_only_after_headless_exit_path(self):
+        caps = 'SetCapsLockState("AlwaysOff")'
+        self.assertLess(ENTRY.index('HasArg("--self-test")'), ENTRY.index(caps))
+        self.assertLess(ENTRY.index(caps), ENTRY.index("LoadPreference()"))
+        toggle = ENTRY.split("TogglePause(*) {", 1)[1].split("\n}", 1)[0]
+        self.assertIn(caps, toggle)
+        self.assertLess(toggle.index(caps), toggle.index("SyncPhysicalState()"))
+        self.assertIn('Hotkey("*CapsLock", ModifierDown.Bind("mod3L"))', ENTRY)
+        self.assertIn("global ShiftLDown := false, ShiftRDown := false, ShiftLock := false", ENTRY)
+
     def test_layout_preference_default_and_explicit_persistence(self):
         self.assertIn('IniRead(IniPath, "Global", "LayoutVariant", "")', ENTRY)
         self.assertIn('IniWrite(CurrentVariant, IniPath, "Global", "LayoutVariant")', ENTRY)

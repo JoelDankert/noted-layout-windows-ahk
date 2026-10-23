@@ -12,7 +12,7 @@ neo-ahk/neo20-all.ahk
 
 The entrypoint explicitly requires AutoHotkey v2.0 and every file it executes is v2 code. No v1 interpreter, launcher, shim, executable, build step, Python installation, or global dependency is part of the distribution. The preserved older `.ahk` files in `neo-ahk/source/` are legacy/reference source only and are not included by the entrypoint.
 
-Use a German QWERTZ Windows input layout. Standard Noted places right Mod3 on `Ä` (`SC028`), `ß/ẞ` on the acute key (`SC01B`), and the acute dead-key family on `#` (`SC02B`). Left Mod3 is CapsLock; Mod4 is the ISO `< >` key or physical Right Alt.
+Use a German QWERTZ Windows input layout. Standard Noted places right Mod3 on `Ä` (`SC028`), `ß/ẞ` on the acute key (`SC01B`), and the acute dead-key family on `#` (`SC02B`). Left Mod3 is the physical CapsLock key; while the script runs, the Windows CapsLock state and LED are forced off (including while paused), so they do not reflect or control the independent Neo Shift lock. Mod4 is the ISO `< >` key or physical Right Alt.
 
 - `Mod3+F7`: toggle Neo/Noted
 - `Mod4+F7`: persist the selection to `%APPDATA%\Neo2\Neo2.ini`
@@ -21,7 +21,7 @@ Use a German QWERTZ Windows input layout. Standard Noted places right Mod3 on `�
 - both Shift keys: Shift lock; both Mod4 keys: Mod4 lock
 - `Ctrl+End`: pause/resume
 
-The tray menu provides compact keyboard help, pause, reload, and exit controls. Switching clears compose state while retaining held physical modifier roles; pause/resume resynchronizes physical modifiers without emitting unrelated modifier-up events.
+The tray menu provides compact keyboard help, pause, reload, and exit controls. Switching clears compose state while retaining held physical modifier roles; pause/resume resynchronizes physical modifiers without emitting unrelated modifier-up events. CapsLock acts as Mod3 while active; pausing disables the layout hotkeys but continues to prevent ordinary Windows CapsLock toggling.
 
 ## Verification
 

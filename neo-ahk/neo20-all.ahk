@@ -25,6 +25,7 @@ global IniPath := A_AppData "\Neo2\Neo2.ini"
 if HasArg("--self-test")
     RunSelfTest()
 
+SetCapsLockState("AlwaysOff")
 LoadPreference()
 InstallTray()
 InstallHotkeys()
@@ -524,8 +525,10 @@ TogglePause(*) {
     ClearTrackedState()
     Suspend(IsPaused)
     SetTrayIcon(!IsPaused)
-    if !IsPaused
+    if !IsPaused {
+        SetCapsLockState("AlwaysOff")
         SyncPhysicalState()
+    }
     TrayTip(IsPaused ? "Pausiert" : "Aktiv", "Neo/Noted")
 }
 

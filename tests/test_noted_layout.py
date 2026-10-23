@@ -114,7 +114,7 @@ class ActiveV2Tests(unittest.TestCase):
         self.assertIn("Suspend(IsPaused)", toggle)
         self.assertIn("SetTrayIcon(!IsPaused)", toggle)
         self.assertLess(toggle.index("Suspend(IsPaused)"), toggle.index("SetTrayIcon(!IsPaused)"))
-        self.assertIn("#SuspendExempt True\n+Pause::TogglePause()\n#SuspendExempt False", ENTRY)
+        self.assertIn("#SuspendExempt True\n^End::TogglePause()\n#SuspendExempt False", ENTRY)
 
 
 if __name__ == "__main__":

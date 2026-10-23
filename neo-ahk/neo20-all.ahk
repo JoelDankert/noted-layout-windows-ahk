@@ -34,7 +34,7 @@ if HasArg("--smoke-test")
 return
 
 #SuspendExempt True
-+Pause::TogglePause()
+^End::TogglePause()
 #SuspendExempt False
 
 HasArg(wanted) {
@@ -501,7 +501,7 @@ InstallTray() {
     SetTrayIcon(true)
     A_TrayMenu.Delete()
     A_TrayMenu.Add("Kompakthilfe", ShowHelp)
-    A_TrayMenu.Add("Pausieren (Shift+Pause)", TogglePause)
+    A_TrayMenu.Add("Pausieren (Strg+Ende)", TogglePause)
     A_TrayMenu.Add("Neu laden", (*) => Reload())
     A_TrayMenu.Add("Beenden", (*) => ExitApp())
     A_TrayMenu.Default := "Kompakthilfe"

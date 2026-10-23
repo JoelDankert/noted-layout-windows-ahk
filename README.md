@@ -19,7 +19,7 @@ Use a German QWERTZ Windows input layout. Standard Noted places right Mod3 on `Ã
 - `Mod3+F6`: toggle QWERTZ; `Mod4+F6` saves it
 - `Mod3+F12`: cycle Neo, NordTast, AdNW, DIEgO, K.O,Y; `Mod4+F12` saves it
 - both Shift keys: Shift lock; both Mod4 keys: Mod4 lock
-- `Shift+Pause`: pause/resume
+- `Ctrl+End`: pause/resume
 
 The tray menu provides compact keyboard help, pause, reload, and exit controls. Switching clears compose state while retaining held physical modifier roles; pause/resume resynchronizes physical modifiers without emitting unrelated modifier-up events.
 

@@ -1,48 +1,45 @@
-# noted-layout-windows-ahk
+# Noted für Windows (AutoHotkey v2)
 
-Native **AutoHotkey v2** implementation of Neo 2 and standard Noted for Windows. Full standard Noted is the default when no layout preference has been saved; explicitly saved Neo and other variants remain selected on later starts. The standard Noted data follows `dariogoetz/noted-layout`’s `xkb/noted` at commit `20f43c1a27736a5f894f6fe32620d41e629a5aab` (fixture: `tests/fixtures/noted.xkb`).
+Eine bewusst minimale, ausschließlich auf **Standard-Noted** festgelegte AutoHotkey-v2-Distribution. Es gibt keine Layoutauswahl, INI-Einstellungen, Bildschirmtastatur, EXE, gebündelte Runtime oder Build-Abhängigkeit.
 
 ## Start
 
-Install AutoHotkey v2, extract this repository, and run exactly:
+AutoHotkey v2 installieren und `noted.ahk` starten. Erwartet wird das deutsche QWERTZ-Windows-Tastaturlayout.
 
-```text
-neo-ahk/neo20-all.ahk
-```
+- linkes Mod3: physische CapsLock-Taste
+- rechtes Mod3: `Ä` (`SC028`)
+- Mod4: ISO-`<>` und rechte Alt-Taste
+- Akut-/Tilde-/Strich-Tottaste: `#` (`SC02B`)
+- beide Shift-Tasten: Shift-Lock; beide Mod4-Tasten: Mod4-Lock
+- `Strg+Ende`: pausieren/fortsetzen (auch während Suspend erreichbar)
 
-The entrypoint explicitly requires AutoHotkey v2.0 and every file it executes is v2 code. No v1 interpreter, launcher, shim, executable, build step, Python installation, or global dependency is part of the distribution. The preserved older `.ahk` files in `neo-ahk/source/` are legacy/reference source only and are not included by the entrypoint.
+CapsLock wird beim Start und Fortsetzen sicher ausgeschaltet. Physische Shift-Tasten bleiben für native Windows-Shortcuts durchgereicht; rechte Alt-Taste wird als Mod4/AltGr behandelt. Noted enthält alle sechs Ebenen, Compose/Tottasten, Navigation, Nummernblock, F-Tasten und native Shortcuts.
 
-Use a German QWERTZ Windows input layout. Standard Noted places right Mod3 on `Ä` (`SC028`), `ß/ẞ` on the acute key (`SC01B`), and the acute dead-key family on `#` (`SC02B`). Left Mod3 is the physical CapsLock key; while the script runs, the Windows CapsLock state and LED are forced off (including while paused), so they do not reflect or control the independent Neo Shift lock. Mod4 is the ISO `< >` key or physical Right Alt.
+Die Statusanzeige läuft rund zwei Sekunden auf dem Monitor des aktiven Fensters. Sie stiehlt keinen Fokus, ist klickdurchlässig und animiert die native große Icon-Grafik mit federndem Wachstum, ruhigem Halten und sanftem Schrumpfen. Schnelle Umschaltungen verwenden dasselbe Fenster erneut.
 
-- `Mod3+F7`: toggle Neo/Noted
-- `Mod4+F7`: persist the selection to `%APPDATA%\Neo2\Neo2.ini`
-- `Mod3+F6`: toggle QWERTZ; `Mod4+F6` saves it
-- `Mod3+F12`: cycle Neo, NordTast, AdNW, DIEgO, K.O,Y; `Mod4+F12` saves it
-- both Shift keys: Shift lock; both Mod4 keys: Mod4 lock
-- `Ctrl+End`: pause/resume
+## Dateien und Herkunft
 
-The tray menu provides compact keyboard help, pause, reload, and exit controls. `Ctrl+End` and the tray pause command show the enabled/disabled icon at the center of the active application's monitor for about two seconds, with brief fades; the borderless click-through overlay does not take typing focus. Repeated toggles replace and restart that one overlay. Switching clears compose state while retaining held physical modifier roles; pause/resume resynchronizes physical modifiers without emitting unrelated modifier-up events. CapsLock acts as Mod3 while active; pausing disables the layout hotkeys but continues to prevent ordinary Windows CapsLock toggling. Other layout/save notifications remain normal Windows tray notifications.
+- `noted.ahk`: AHK-v2-Laufzeit
+- `data.ahk`: 91 vollständig aufgelöste Noted-Zeilen und die vollständigen 7.622 Compose-Ergebnisse; 1.644 Präfixe werden beim Start daraus gebildet
+- `noted_enabled.ico`: unverändertes `res/neo_enabled.ico` aus [Rojetto/ReNeo](https://github.com/Rojetto/ReNeo), Commit `c0dda5a59bce714a09bc4e1f64268eaf9bd4f416`, Git-Blob `08bb171a81ca2680fd4b6554f05d0b704c1eb64c`
+- `noted_disabled.ico`: daraus lokal abgeleitete, entsättigte und abgedunkelte OFF-Variante mit 16/24/32/48/64/128/256 px; kein angeblicher Upstream-Dateiname
 
-The enabled tray and on-screen icon is the unmodified `res/neo_enabled.ico` from [Rojetto/ReNeo](https://github.com/Rojetto/ReNeo) at commit `c0dda5a59bce714a09bc4e1f64268eaf9bd4f416` (Git blob `08bb171a81ca2680fd4b6554f05d0b704c1eb64c`, 24,018 bytes). The upstream project and this repository are GPL-3.0 licensed. The same checked-in asset is used for both the enabled tray state and the enabled overlay state; `neo_disabled.ico` supplies the corresponding disabled states.
+Die Standard-Noted-Belegung folgt `dariogoetz/noted-layout` `xkb/noted` bei Commit `20f43c1a27736a5f894f6fe32620d41e629a5aab`; die gepinnte Fixture liegt unter `tests/fixtures/noted.xkb`. `NoSymbol`-Werte sind in `BuildNotedData` bereits konkret aus der bisherigen Neo-Basis aufgelöst, `VoidSymbol` bleibt leer. Git-Historie enthält die entfernten Legacy-/Generatorquellen.
 
-## Verification
-
-Static fixture checks:
+## Prüfung
 
 ```sh
 python3 -m unittest tests.test_noted_layout -v
 ```
 
-Harmless v2 runtime self-test (does not install hotkeys, create directories, or read/write preferences):
+Unter Windows beziehungsweise der isolierten Testumgebung:
 
 ```text
-AutoHotkey64.exe neo-ahk\neo20-all.ahk --self-test
+AutoHotkey64.exe noted.ahk --self-test
+AutoHotkey64.exe noted.ahk --smoke-test
+AutoHotkey64.exe tests\verify_osd.ahk
 ```
 
-It loads the actual v2 entrypoint/data and checks all 32 exact Neo modifier states, pseudo-layer fallback and layer-6 dispatch, standard Noted overrides, compose/dead keys, F/numpad action resolution, shifted output specs, variants, held-key transitions, and all saved preference values. It writes PASS/FAIL to stdout and `neo-ahk/neo20-self-test.txt`, and exits nonzero on failure. It does not touch the saved INI.
+`--self-test` beendet sich vor CapsLock-Änderung, Hotkeys, Tray und OSD. Die statischen Entwicklungstests brauchen nur Python aus der Entwicklungsumgebung; Endnutzer benötigen es nicht.
 
-## Compatibility note
-
-The old v1 implementation contained additional specialist utilities (dynamic compose-file rebuilding, learning/one-hand modes, Unicode-number tools, ROM/clipboard/window helpers, and the large graphical screen keyboard). They remain as clearly legacy/reference source but are not executed and have not been ported. Core layouts, six layers, navigation/numpad actions, compose/dead-key data, locks, selection/persistence, and tray lifecycle controls are implemented in v2.
-
-GPL-3.0; see `LICENSE`.
+GPL-3.0; siehe `LICENSE`.

@@ -1,18 +1,19 @@
-"""Static checks for the active AutoHotkey v2 implementation and pinned Noted fixture."""
+"""Focused dependency-free checks for the minimal Noted-only distribution."""
 import csv
 import hashlib
 import re
+import struct
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ENTRY = (ROOT / "neo-ahk/neo20-all.ahk").read_text(encoding="utf-8-sig")
-DATA = (ROOT / "neo-ahk/source/v2-generated-data.ahk").read_text(encoding="utf-8-sig")
+ENTRY = (ROOT / "noted.ahk").read_text(encoding="utf-8-sig")
+DATA = (ROOT / "data.ahk").read_text(encoding="utf-8-sig")
 XKB = (ROOT / "tests/fixtures/noted.xkb").read_text(encoding="utf-8")
-SC = {f"AD{i:02d}": f"{i + 0x0f:03X}" for i in range(1, 13)}
-SC.update({f"AC{i:02d}": f"{i + 0x1d:03X}" for i in range(1, 12)})
-SC.update({f"AB{i:02d}": f"{i + 0x2b:03X}" for i in range(1, 11)})
-SC["AC12"] = "02B"
+SC = {f"AD{i:02d}": f"sc{i + 0x0f:03X}" for i in range(1, 13)}
+SC.update({f"AC{i:02d}": f"sc{i + 0x1d:03X}" for i in range(1, 12)})
+SC.update({f"AB{i:02d}": f"sc{i + 0x2b:03X}" for i in range(1, 11)})
+SC["AC12"] = "sc02B"
 ORDER = (0, 1, 2, 4, 3, 6, 5, 7)
 SYMBOL = {
     "ssharp":"ß", "comma":",", "period":".", "semicolon":";", "udiaeresis":"ü",
@@ -28,126 +29,101 @@ GREEK = dict(zip("alpha beta gamma delta epsilon zeta eta theta iota kappa lambd
 
 
 def value(symbol):
-    if symbol == "NoSymbol": return "="
-    if symbol == "VoidSymbol": return ""
+    if symbol in ("NoSymbol", "VoidSymbol"): return symbol
     if re.fullmatch(r"U[0-9A-Fa-f]{4,8}", symbol): return chr(int(symbol[1:], 16))
     if symbol in SYMBOL: return SYMBOL[symbol]
     if symbol.startswith("Greek_"):
-        name = symbol[6:]
-        result = GREEK[name.lower()]
+        name = symbol[6:]; result = GREEK[name.lower()]
         return result.upper() if name.isupper() else result
     return symbol
 
 
-def fixture():
-    body = XKB.split('xkb_symbols "noted_base"', 1)[1].split("\n};", 1)[0]
-    return {key: [x.strip() for x in vals.split(",")]
-            for key, vals in re.findall(r"key <([A-Z]{2}[0-9]{2})>\s*\{\s*\[([^]]+)]", body)}
+def rows():
+    result = {}
+    for key, body in re.findall(r'^\s*data\["([^"]+)"\] := \[(.*?)\]$', DATA, re.M):
+        cap = int(body[0])
+        fields = [s.replace("``", "`").replace('`"', '"')
+                  for s in re.findall(r'"((?:``|`"|[^"])*)"', body)]
+        result[key] = [cap, *fields]
+    return result
 
 
-def noted_rows():
-    rows = {}
-    for args in re.findall(r'^\s*AddNoted\(m,(.*)\)$', ENTRY, re.M):
-        row = next(csv.reader([args], skipinitialspace=True))
-        rows[row[0]] = row[2:]
-    return rows
+def ico_sizes(path):
+    raw = path.read_bytes(); count = struct.unpack_from("<H", raw, 4)[0]
+    result = set()
+    for i in range(count):
+        width, height = raw[6 + i * 16], raw[7 + i * 16]
+        result.add((width or 256, height or 256))
+    return result
 
 
-class ActiveV2Tests(unittest.TestCase):
-    def test_entrypoint_is_v2_only(self):
-        self.assertIn("#Requires AutoHotkey v2.0", ENTRY)
-        self.assertIn("#SingleInstance Force", ENTRY)
-        self.assertIn("#Include source\\v2-generated-data.ahk", ENTRY)
-        self.assertNotRegex(ENTRY, r"#Include .*?(initialize|keyhooks|levelfunctions)\.ahk")
-
-    def test_every_official_noted_override_matches_semantic_order(self):
-        actual = noted_rows()
-        for key, slots in fixture().items():
-            if key == "AC11":  # physical right Mod3, handled by DualKeyDown
-                continue
-            expected = [value(slots[i]) for i in ORDER]
-            if key == "AC12": expected[6] = ""
-            with self.subTest(key=key):
-                self.assertEqual(expected, actual[SC[key]])
-
-    def test_physical_modifiers_void_and_inheritance(self):
-        self.assertIn('key = "sc028" : key = "sc02B"', ENTRY)
-        self.assertIn('Hotkey("~*RShift"', ENTRY)
-        self.assertIn('Hotkey("~*LShift"', ENTRY)
-        self.assertIn('Hotkey("*RAlt"', ENTRY)
-        rows = noted_rows()
-        self.assertEqual("", rows["012"][4])
-        self.assertEqual("=", rows["012"][2])
-        self.assertEqual("S__NDot", rows["027"][6])
-
-    def test_compose_and_variants_are_checked_in(self):
-        self.assertGreater(DATA.count("prefixes["), 1500)
-        self.assertGreater(DATA.count("exact["), 7000)
-        for name in ("QWERTZ", "NordTast", "AdNW", "DIEgO", "K.O,Y", "Noted"):
-            self.assertIn(f'"{name}"', ENTRY)
-        self.assertIn('%APPDATA%\\Neo2\\Neo2.ini', (ROOT / "README.md").read_text(encoding="utf-8"))
-
-    def test_headless_path_precedes_preferences_and_hooks(self):
-        self.assertLess(ENTRY.index('HasArg("--self-test")'), ENTRY.index("LoadPreference()"))
-        self.assertLess(ENTRY.index('HasArg("--self-test")'), ENTRY.index("InstallHotkeys()"))
-        self.assertIn("ExitApp(1)", ENTRY)
-        self.assertIn("ExitApp(0)", ENTRY)
-
-    def test_caps_lock_is_forced_off_only_after_headless_exit_path(self):
-        caps = 'SetCapsLockState("AlwaysOff")'
-        self.assertLess(ENTRY.index('HasArg("--self-test")'), ENTRY.index(caps))
-        self.assertLess(ENTRY.index(caps), ENTRY.index("LoadPreference()"))
-        toggle = ENTRY.split("TogglePause(*) {", 1)[1].split("\n}", 1)[0]
-        self.assertIn(caps, toggle)
-        self.assertLess(toggle.index(caps), toggle.index("SyncPhysicalState()"))
-        self.assertIn('Hotkey("*CapsLock", ModifierDown.Bind("mod3L"))', ENTRY)
-        self.assertIn("global ShiftLDown := false, ShiftRDown := false, ShiftLock := false", ENTRY)
-
-    def test_layout_preference_default_and_explicit_persistence(self):
-        self.assertIn('IniRead(IniPath, "Global", "LayoutVariant", "")', ENTRY)
-        self.assertIn('IniWrite(CurrentVariant, IniPath, "Global", "LayoutVariant")', ENTRY)
-        self.assertIn('return "Noted"', ENTRY)
-        self.assertIn('VariantFromPreferences("Neo", "1", "1", "4") = "Neo"', ENTRY)
-        for name in ("Noted", "QWERTZ", "NordTast", "AdNW", "DIEgO", "K.O,Y"):
-            self.assertIn(f'VariantFromPreferences("{name}",', ENTRY)
-
-    def test_script_only_distribution(self):
+class NotedDistributionTests(unittest.TestCase):
+    def test_minimal_script_only_tree(self):
+        files = {p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*")
+                 if p.is_file() and ".git/" not in p.as_posix() and "__pycache__" not in p.as_posix()}
+        self.assertEqual({".gitignore", "LICENSE", "README.md", "noted.ahk", "data.ahk",
+                          "noted_enabled.ico", "noted_disabled.ico",
+                          "tests/fixtures/noted.xkb", "tests/test_noted_layout.py",
+                          "tests/verify_osd.ahk"}, files)
         self.assertFalse(any(ROOT.rglob("*.exe")))
-        self.assertFalse(any(ROOT.rglob("*.cmd")))
-        self.assertFalse((ROOT / "runtime").exists())
 
-    def test_tray_icon_tracks_suspended_state(self):
-        self.assertTrue((ROOT / "neo-ahk/neo_enabled.ico").is_file())
-        self.assertTrue((ROOT / "neo-ahk/neo_disabled.ico").is_file())
-        self.assertIn('TraySetIcon(A_ScriptDir "\\neo_" (enabled ? "enabled" : "disabled") ".ico",, true)', ENTRY)
-        self.assertRegex(ENTRY, r"InstallTray\(\) \{\s+SetTrayIcon\(true\)")
-        toggle = ENTRY.split("TogglePause(*) {", 1)[1].split("\n}", 1)[0]
-        self.assertIn("Suspend(IsPaused)", toggle)
-        self.assertIn("SetTrayIcon(!IsPaused)", toggle)
-        self.assertLess(toggle.index("Suspend(IsPaused)"), toggle.index("SetTrayIcon(!IsPaused)"))
-        self.assertIn("ShowPauseOsd(!IsPaused)", toggle)
-        self.assertNotIn("TrayTip", toggle)
-        self.assertIn("#SuspendExempt True\n^End::TogglePause()\n#SuspendExempt False", ENTRY)
+    def test_entrypoint_is_noted_only_v2(self):
+        self.assertIn("#Requires AutoHotkey v2.0", ENTRY)
+        self.assertIn("#Include data.ahk", ENTRY)
+        for stale in ("NeoBase", "Variant", "QWERTZ", "NordTast", "IniRead", "IniWrite", "F7"):
+            self.assertNotIn(stale, ENTRY)
+        self.assertIn('Hotkey("*sc028", ModifierDown.Bind("mod3R"))', ENTRY)
+        self.assertIn('if key != "sc028"\n            Hotkey("*" key, KeyDown.Bind(key))', ENTRY)
+        self.assertIn('data["sc02B"]', DATA)
+        self.assertIn('Hotkey("~*RShift"', ENTRY)
+        self.assertIn('#SuspendExempt True\n^End::TogglePause()', ENTRY)
+        self.assertLess(ENTRY.index('HasArg("--self-test")'), ENTRY.index('SetCapsLockState("AlwaysOff")'))
 
-    def test_pause_osd_and_pinned_icons(self):
-        enabled = (ROOT / "neo-ahk/neo_enabled.ico").read_bytes()
-        disabled = (ROOT / "neo-ahk/neo_disabled.ico").read_bytes()
-        git_blob = lambda data: hashlib.sha1(
-            f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
-        self.assertEqual(24018, len(enabled))
-        self.assertEqual("08bb171a81ca2680fd4b6554f05d0b704c1eb64c", git_blob(enabled))
-        self.assertEqual(2238, len(disabled))
-        self.assertEqual("1e2c2af90b064c3393102397091133cdd482a466", git_blob(disabled))
-        self.assertIn('Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +E0x08000000 -DPIScale")', ENTRY)
-        self.assertIn('AddPicture("x0 y0 w" iconSize " h" iconSize)', ENTRY)
-        self.assertIn("PauseOsdStart := A_TickCount", ENTRY)
-        self.assertIn("SetTimer(AnimatePauseOsd, 16)", ENTRY)
-        self.assertIn('PauseOsdGui.Show("NA x"', ENTRY)
-        self.assertIn('DllCall("MonitorFromWindow"', ENTRY)
-        initial_alpha = 'WinSetTransColor("010203 1", PauseOsdGui)'
-        self.assertEqual(2, len(re.findall(r'^\s*WinSetTransColor\(.+, PauseOsdGui\)$', ENTRY, re.M)))
-        self.assertNotIn('"ahk_id " PauseOsdGui.Hwnd', ENTRY)
-        self.assertLess(ENTRY.index(initial_alpha), ENTRY.index('PauseOsdGui.Show("NA x"'))
+    def test_complete_resolved_table_is_pinned(self):
+        parsed = rows()
+        self.assertEqual(91, len(parsed))
+        canonical = "\n".join(f"{key}={body}" for key, body in
+                              re.findall(r'^\s*data\["([^"]+)"\] := \[(.*?)\]$', DATA, re.M))
+        self.assertEqual("efd492b8b410da3083bdaf1a5632e32f4964301e64c113bbb60c317e51b31cd2",
+                         hashlib.sha256(canonical.encode()).hexdigest())
+        self.assertEqual("]", parsed["sc013"][3])  # inherited NoSymbol is concrete
+        self.assertEqual("", parsed["sc012"][5])   # VoidSymbol stays empty
+        self.assertEqual("", parsed["sc028"][1])
+
+    def test_every_xkb_noted_value_matches_baked_rows(self):
+        parsed = rows()
+        body = XKB.split('xkb_symbols "noted_base"', 1)[1].split("\n};", 1)[0]
+        fixture = {key: [x.strip() for x in vals.split(",")]
+                   for key, vals in re.findall(r"key <([A-Z]{2}[0-9]{2})>\s*\{\s*\[([^]]+)]", body)}
+        for key, slots in fixture.items():
+            if key == "AC11": continue
+            for layer, expected in enumerate((value(slots[i]) for i in ORDER), 1):
+                if expected == "NoSymbol": continue
+                if key == "AC12" and layer == 7: expected = ""
+                with self.subTest(key=key, layer=layer):
+                    self.assertEqual(expected if expected != "VoidSymbol" else "", parsed[SC[key]][layer])
+
+    def test_compose_dictionary_and_derived_prefixes(self):
+        packed = DATA.split("( Join`n", 1)[1].split('\n)"', 1)[0].strip("\n")
+        lines = packed.splitlines()
+        self.assertEqual(7622, len(lines))
+        self.assertEqual("aeb6104f0d1f518748166f59c0fee0b8a00b7b8a8ae8e2e078f4244f81c5674c",
+                         hashlib.sha256(packed.encode()).hexdigest())
+        prefixes = {key[:n] for line in lines for key in [line.split("`t", 1)[0]]
+                    for n in range(7, len(key), 7)}
+        self.assertEqual(1644, len(prefixes))
+
+    def test_icons_and_osd_contract(self):
+        enabled = (ROOT / "noted_enabled.ico").read_bytes()
+        blob = hashlib.sha1(f"blob {len(enabled)}\0".encode() + enabled).hexdigest()
+        self.assertEqual("08bb171a81ca2680fd4b6554f05d0b704c1eb64c", blob)
+        self.assertEqual({(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)},
+                         ico_sizes(ROOT / "noted_disabled.ico"))
+        for text in ("-DPIScale", "DrawIconEx", "PauseOsdCenterX - size / 2",
+                     "PauseOsdCenterY - size / 2", "static duration := 2000", "c1 := 1.35",
+                     "OnMessage(0x000F, PaintPauseOsd)", "BeginPaint", "EndPaint"):
+            self.assertIn(text, ENTRY)
+        self.assertNotIn("WinSetTransparent", ENTRY)
 
 
 if __name__ == "__main__":

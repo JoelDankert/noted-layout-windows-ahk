@@ -105,6 +105,17 @@ class ActiveV2Tests(unittest.TestCase):
         self.assertFalse(any(ROOT.rglob("*.cmd")))
         self.assertFalse((ROOT / "runtime").exists())
 
+    def test_tray_icon_tracks_suspended_state(self):
+        self.assertTrue((ROOT / "neo-ahk/neo_enabled.ico").is_file())
+        self.assertTrue((ROOT / "neo-ahk/neo_disabled.ico").is_file())
+        self.assertIn('TraySetIcon(A_ScriptDir "\\neo_" (enabled ? "enabled" : "disabled") ".ico",, true)', ENTRY)
+        self.assertRegex(ENTRY, r"InstallTray\(\) \{\s+SetTrayIcon\(true\)")
+        toggle = ENTRY.split("TogglePause(*) {", 1)[1].split("\n}", 1)[0]
+        self.assertIn("Suspend(IsPaused)", toggle)
+        self.assertIn("SetTrayIcon(!IsPaused)", toggle)
+        self.assertLess(toggle.index("Suspend(IsPaused)"), toggle.index("SetTrayIcon(!IsPaused)"))
+        self.assertIn("#SuspendExempt True\n+Pause::TogglePause()\n#SuspendExempt False", ENTRY)
+
 
 if __name__ == "__main__":
     unittest.main()

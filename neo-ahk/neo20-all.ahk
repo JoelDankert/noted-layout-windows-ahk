@@ -498,12 +498,17 @@ SaveVariant() {
 }
 
 InstallTray() {
+    SetTrayIcon(true)
     A_TrayMenu.Delete()
     A_TrayMenu.Add("Kompakthilfe", ShowHelp)
     A_TrayMenu.Add("Pausieren (Shift+Pause)", TogglePause)
     A_TrayMenu.Add("Neu laden", (*) => Reload())
     A_TrayMenu.Add("Beenden", (*) => ExitApp())
     A_TrayMenu.Default := "Kompakthilfe"
+}
+
+SetTrayIcon(enabled) {
+    TraySetIcon(A_ScriptDir "\neo_" (enabled ? "enabled" : "disabled") ".ico",, true)
 }
 
 ShowHelp(*) {
@@ -518,6 +523,7 @@ TogglePause(*) {
     IsPaused := !IsPaused
     ClearTrackedState()
     Suspend(IsPaused)
+    SetTrayIcon(!IsPaused)
     if !IsPaused
         SyncPhysicalState()
     TrayTip(IsPaused ? "Pausiert" : "Aktiv", "Neo/Noted")

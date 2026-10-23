@@ -11,8 +11,11 @@ global ShiftLDown := false, ShiftRDown := false, ShiftLock := false
 global Mod3LDown := false, Mod3RDown := false
 global Mod4LDown := false, Mod4RDown := false, Mod4Lock := false
 global NonModifierUsed := false, IsPaused := false
-global PauseOsdGui := 0, PauseOsdIcon := 0, PauseOsdStart := 0
+global PauseHotkeyLatched := false
+global PauseOsdGui := 0, PauseOsdIcons := Map(), PauseOsdIcon := 0, PauseOsdStart := 0
 global PauseOsdCenterX := 0, PauseOsdCenterY := 0
+global PauseOsdSize := 36, PauseOsdFromSize := 36, PauseOsdGeneration := 0
+global PauseOsdDc := 0, PauseOsdBitmap := 0, PauseOsdOldBitmap := 0, PauseOsdBits := 0
 
 if HasArg("--self-test")
     RunSelfTest()
@@ -25,7 +28,8 @@ if HasArg("--smoke-test")
 return
 
 #SuspendExempt True
-^End::TogglePause()
+*End::PauseEndDown()
+~*End up::PauseHotkeyUp()
 #SuspendExempt False
 
 HasArg(wanted) {
@@ -38,7 +42,7 @@ HasArg(wanted) {
 InstallHotkeys() {
     global Layout
     for key, unused in Layout
-        if key != "sc028"
+        if key != "sc028" && key != "end"
             Hotkey("*" key, KeyDown.Bind(key))
     Hotkey("*sc028", ModifierDown.Bind("mod3R"))
     Hotkey("*sc028 up", ModifierUp.Bind("mod3R"))
@@ -310,96 +314,148 @@ SetTrayIcon(enabled) {
 
 TogglePause(*) {
     global IsPaused
-    IsPaused := !IsPaused
-    ClearTrackedState()
-    Suspend(IsPaused)
-    SetTrayIcon(!IsPaused)
-    if !IsPaused {
-        SetCapsLockState("AlwaysOff")
-        SyncPhysicalState()
+    previousCritical := A_IsCritical
+    Critical("On")
+    try {
+        IsPaused := !IsPaused
+        ClearTrackedState()
+        Suspend(IsPaused)
+        SetTrayIcon(!IsPaused)
+        if !IsPaused {
+            SetCapsLockState("AlwaysOff")
+            SyncPhysicalState()
+        }
+        ShowPauseOsd(!IsPaused)
+    } finally {
+        Critical(previousCritical ? previousCritical : "Off")
     }
-    ShowPauseOsd(!IsPaused)
+}
+
+PauseHotkeyDown(*) {
+    global PauseHotkeyLatched
+    if PauseHotkeyLatched
+        return
+    PauseHotkeyLatched := true
+    TogglePause()
+}
+
+PauseEndDown(*) {
+    global IsPaused, PauseHotkeyLatched
+    if PauseHotkeyLatched
+        return
+    if GetKeyState("Ctrl") && !GetKeyState("Shift") && !GetKeyState("Alt")
+            && !GetKeyState("LWin") && !GetKeyState("RWin")
+        PauseHotkeyDown()
+    else if IsPaused
+        Send("{Blind}{End}")
+    else
+        KeyDown("end")
+}
+
+PauseHotkeyUp(*) {
+    global PauseHotkeyLatched
+    PauseHotkeyLatched := false
 }
 
 ShowPauseOsd(enabled) {
-    global RuntimeDir, PauseOsdGui, PauseOsdIcon, PauseOsdStart, PauseOsdCenterX, PauseOsdCenterY
-    activeWindow := WinExist("A")
-    if !PauseOsdGui {
-        PauseOsdGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +E0x08000000 -DPIScale")
-        PauseOsdGui.BackColor := "010203"
-        WinSetTransColor("010203 255", PauseOsdGui)
-        OnMessage(0x000F, PaintPauseOsd)
+    global PauseOsdGui, PauseOsdIcons, PauseOsdIcon, PauseOsdStart
+    global PauseOsdCenterX, PauseOsdCenterY, PauseOsdSize, PauseOsdFromSize, PauseOsdGeneration
+    previousCritical := A_IsCritical
+    Critical("On")
+    try {
+        activeWindow := WinExist("A")
+        InitPauseOsd()
+        SetTimer(AnimatePauseOsd, 0)
+        visible := DllCall("IsWindowVisible", "Ptr", PauseOsdGui.Hwnd)
+        PauseOsdFromSize := visible ? PauseOsdSize : 36
+        PauseOsdIcon := PauseOsdIcons[enabled ? "enabled" : "disabled"]
+        monitor := MonitorForWindow(activeWindow)
+        PauseOsdCenterX := (monitor[1] + monitor[3]) / 2
+        PauseOsdCenterY := (monitor[2] + monitor[4]) / 2
+        PauseOsdStart := A_TickCount
+        PauseOsdGeneration += 1
+        DrawPauseOsd(PauseOsdFromSize)
+        if !visible
+            DllCall("ShowWindow", "Ptr", PauseOsdGui.Hwnd, "Int", 4)
+        SetTimer(AnimatePauseOsd, 16)
+    } finally {
+        Critical(previousCritical ? previousCritical : "Off")
     }
-    SetTimer(AnimatePauseOsd, 0)
-    if PauseOsdIcon
-        DllCall("DestroyIcon", "Ptr", PauseOsdIcon)
-    PauseOsdIcon := LoadPicture(RuntimeDir "\noted_" (enabled ? "enabled" : "disabled") ".ico",
-        "w256 h256", &imageType)
-    monitor := MonitorForWindow(activeWindow)
-    PauseOsdCenterX := (monitor[1] + monitor[3]) / 2
-    PauseOsdCenterY := (monitor[2] + monitor[4]) / 2
-    PauseOsdStart := A_TickCount
-    DrawPauseOsd(36)
-    PauseOsdGui.Show("NA")
-    SetTimer(AnimatePauseOsd, 16)
+}
+
+InitPauseOsd() {
+    global RuntimeDir, PauseOsdGui, PauseOsdIcons
+    global PauseOsdDc, PauseOsdBitmap, PauseOsdOldBitmap, PauseOsdBits
+    if PauseOsdGui
+        return
+    PauseOsdGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +E0x08080000 -DPIScale")
+    PauseOsdIcons["enabled"] := LoadPicture(RuntimeDir "\noted_enabled.ico", "w256 h256", &imageType)
+    PauseOsdIcons["disabled"] := LoadPicture(RuntimeDir "\noted_disabled.ico", "w256 h256", &imageType)
+    if !PauseOsdIcons["enabled"] || !PauseOsdIcons["disabled"]
+        throw Error("Unable to load OSD icons")
+    info := Buffer(40, 0)
+    NumPut("UInt", 40, "Int", 256, "Int", -256, "UShort", 1, "UShort", 32, info)
+    PauseOsdDc := DllCall("CreateCompatibleDC", "Ptr", 0, "Ptr")
+    PauseOsdBitmap := DllCall("CreateDIBSection", "Ptr", 0, "Ptr", info, "UInt", 0,
+        "Ptr*", &PauseOsdBits, "Ptr", 0, "UInt", 0, "Ptr")
+    if !PauseOsdDc || !PauseOsdBitmap || !PauseOsdBits
+        throw Error("Unable to create OSD frame buffer (Win32 " A_LastError ")")
+    PauseOsdOldBitmap := DllCall("SelectObject", "Ptr", PauseOsdDc, "Ptr", PauseOsdBitmap, "Ptr")
+    if !PauseOsdOldBitmap
+        throw Error("Unable to select OSD frame buffer (Win32 " A_LastError ")")
 }
 
 AnimatePauseOsd() {
-    global PauseOsdGui, PauseOsdStart
+    global PauseOsdGui, PauseOsdStart, PauseOsdFromSize, PauseOsdGeneration
     static duration := 2000, enter := 480, exitStart := 1450, target := 160
-    elapsed := A_TickCount - PauseOsdStart
-    if elapsed >= duration {
-        SetTimer(AnimatePauseOsd, 0)
-        PauseOsdGui.Hide()
-        return
+    previousCritical := A_IsCritical
+    Critical("On")
+    try {
+        generation := PauseOsdGeneration
+        elapsed := A_TickCount - PauseOsdStart
+        if elapsed >= duration {
+            if generation = PauseOsdGeneration {
+                SetTimer(AnimatePauseOsd, 0)
+                PauseOsdGui.Hide()
+            }
+            return
+        }
+        if elapsed < enter {
+            t := elapsed / enter
+            c1 := 1.35, c3 := c1 + 1
+            eased := 1 + c3 * ((t - 1) ** 3) + c1 * ((t - 1) ** 2)
+            size := Round(PauseOsdFromSize + (target - PauseOsdFromSize) * eased)
+        } else if elapsed < exitStart {
+            size := target
+        } else {
+            t := (elapsed - exitStart) / (duration - exitStart)
+            size := Round(target * (1 - t ** 3))
+        }
+        if generation = PauseOsdGeneration
+            DrawPauseOsd(Max(1, size))
+    } finally {
+        Critical(previousCritical ? previousCritical : "Off")
     }
-    if elapsed < enter {
-        t := elapsed / enter
-        c1 := 1.35, c3 := c1 + 1
-        eased := 1 + c3 * ((t - 1) ** 3) + c1 * ((t - 1) ** 2)
-        size := Round(36 + (target - 36) * eased)
-    } else if elapsed < exitStart {
-        size := target
-    } else {
-        t := (elapsed - exitStart) / (duration - exitStart)
-        size := Round(target * (1 - t ** 3))
-    }
-    DrawPauseOsd(Max(1, size))
 }
 
 DrawPauseOsd(size) {
-    global PauseOsdGui, PauseOsdCenterX, PauseOsdCenterY
+    global PauseOsdGui, PauseOsdIcon, PauseOsdCenterX, PauseOsdCenterY, PauseOsdSize
+    global PauseOsdDc, PauseOsdBits
+    size := Min(256, Max(1, Round(size)))
     x := Round(PauseOsdCenterX - size / 2), y := Round(PauseOsdCenterY - size / 2)
-    previousWinDelay := A_WinDelay
-    SetWinDelay(-1)
-    try
-        WinMove(x, y, size, size, PauseOsdGui)
-    finally
-        SetWinDelay(previousWinDelay)
-    DllCall("RedrawWindow", "Ptr", PauseOsdGui.Hwnd, "Ptr", 0, "Ptr", 0, "UInt", 0x121)
-}
-
-PaintPauseOsd(wParam, lParam, message, hwnd) {
-    global PauseOsdGui, PauseOsdIcon
-    if !PauseOsdGui || hwnd != PauseOsdGui.Hwnd
-        return
-    paint := Buffer(A_PtrSize = 8 ? 72 : 64, 0)
-    dc := DllCall("BeginPaint", "Ptr", hwnd, "Ptr", paint, "Ptr")
-    try {
-        rect := Buffer(16, 0)
-        DllCall("GetClientRect", "Ptr", hwnd, "Ptr", rect)
-        size := NumGet(rect, 8, "Int")
-        brush := DllCall("CreateSolidBrush", "UInt", 0x030201, "Ptr")
-        DllCall("FillRect", "Ptr", dc, "Ptr", rect, "Ptr", brush)
-        DllCall("DeleteObject", "Ptr", brush)
-        DllCall("SetStretchBltMode", "Ptr", dc, "Int", 4)
-        if PauseOsdIcon
-            DllCall("DrawIconEx", "Ptr", dc, "Int", 0, "Int", 0, "Ptr", PauseOsdIcon,
-                "Int", size, "Int", size, "UInt", 0, "Ptr", 0, "UInt", 3)
-    } finally {
-        DllCall("EndPaint", "Ptr", hwnd, "Ptr", paint)
-    }
-    return 0
+    DllCall("RtlZeroMemory", "Ptr", PauseOsdBits, "UPtr", 256 * 256 * 4)
+    if !DllCall("DrawIconEx", "Ptr", PauseOsdDc, "Int", 0, "Int", 0, "Ptr", PauseOsdIcon,
+            "Int", size, "Int", size, "UInt", 0, "Ptr", 0, "UInt", 3)
+        throw Error("Unable to draw OSD icon (Win32 " A_LastError ")")
+    destination := Buffer(8), dimensions := Buffer(8), source := Buffer(8, 0), blend := Buffer(4)
+    NumPut("Int", x, "Int", y, destination)
+    NumPut("Int", size, "Int", size, dimensions)
+    NumPut("UChar", 0, "UChar", 0, "UChar", 255, "UChar", 1, blend)
+    if !DllCall("UpdateLayeredWindow", "Ptr", PauseOsdGui.Hwnd, "Ptr", 0,
+            "Ptr", destination, "Ptr", dimensions, "Ptr", PauseOsdDc, "Ptr", source,
+            "UInt", 0, "Ptr", blend, "UInt", 2)
+        throw Error("Unable to publish OSD frame (Win32 " A_LastError ")")
+    PauseOsdSize := size
 }
 
 ClearTrackedState(*) {
@@ -416,10 +472,25 @@ SyncPhysicalState() {
 }
 
 ReleaseAll(*) {
-    global PauseOsdIcon
+    global PauseOsdGui, PauseOsdIcons, PauseOsdIcon, PauseOsdDc, PauseOsdBitmap, PauseOsdOldBitmap, PauseOsdBits
+    SetTimer(AnimatePauseOsd, 0)
     ClearTrackedState()
-    if PauseOsdIcon
-        DllCall("DestroyIcon", "Ptr", PauseOsdIcon)
+    if PauseOsdDc && PauseOsdOldBitmap
+        DllCall("SelectObject", "Ptr", PauseOsdDc, "Ptr", PauseOsdOldBitmap)
+    if PauseOsdBitmap
+        DllCall("DeleteObject", "Ptr", PauseOsdBitmap)
+    if PauseOsdDc
+        DllCall("DeleteDC", "Ptr", PauseOsdDc)
+    for unused, icon in PauseOsdIcons
+        if icon
+            DllCall("DestroyIcon", "Ptr", icon)
+    PauseOsdIcons := Map()
+    PauseOsdIcon := 0
+    PauseOsdOldBitmap := 0, PauseOsdBitmap := 0, PauseOsdDc := 0, PauseOsdBits := 0
+    if PauseOsdGui {
+        PauseOsdGui.Destroy()
+        PauseOsdGui := 0
+    }
 }
 
 RunSelfTest() {

@@ -73,10 +73,10 @@ class NotedDistributionTests(unittest.TestCase):
         for stale in ("NeoBase", "Variant", "QWERTZ", "NordTast", "IniRead", "IniWrite", "F7"):
             self.assertNotIn(stale, ENTRY)
         self.assertIn('Hotkey("*sc028", ModifierDown.Bind("mod3R"))', ENTRY)
-        self.assertIn('if key != "sc028"\n            Hotkey("*" key, KeyDown.Bind(key))', ENTRY)
+        self.assertIn('if key != "sc028" && key != "end"\n            Hotkey("*" key, KeyDown.Bind(key))', ENTRY)
         self.assertIn('data["sc02B"]', DATA)
         self.assertIn('Hotkey("~*RShift"', ENTRY)
-        self.assertIn('#SuspendExempt True\n^End::TogglePause()', ENTRY)
+        self.assertIn('#SuspendExempt True\n*End::PauseEndDown()\n~*End up::PauseHotkeyUp()', ENTRY)
         self.assertLess(ENTRY.index('HasArg("--self-test")'), ENTRY.index('SetCapsLockState("AlwaysOff")'))
 
     def test_complete_resolved_table_is_pinned(self):
@@ -121,9 +121,21 @@ class NotedDistributionTests(unittest.TestCase):
                          ico_sizes(ROOT / "noted_disabled.ico"))
         for text in ("-DPIScale", "DrawIconEx", "PauseOsdCenterX - size / 2",
                      "PauseOsdCenterY - size / 2", "static duration := 2000", "c1 := 1.35",
-                     "OnMessage(0x000F, PaintPauseOsd)", "BeginPaint", "EndPaint"):
+                     "UpdateLayeredWindow", "CreateDIBSection", "PauseOsdFromSize"):
             self.assertIn(text, ENTRY)
-        self.assertNotIn("WinSetTransparent", ENTRY)
+        for forbidden in ("WinSetTransparent", "WinSetTransColor", "SetLayeredWindowAttributes",
+                          "OnMessage(0x000F", "BeginPaint", "EndPaint"):
+            self.assertNotIn(forbidden, ENTRY)
+
+    def test_osd_activation_and_resource_contract(self):
+        self.assertRegex(ENTRY, r"(?s)PauseHotkeyDown\([^)]*\).*?if PauseHotkeyLatched\s+return.*?PauseHotkeyLatched := true",
+                         "Ctrl+End auto-repeat needs an explicit key-down latch")
+        self.assertRegex(ENTRY, r"(?s)PauseHotkeyUp\([^)]*\).*?PauseHotkeyLatched := false")
+        self.assertIn("PauseOsdGeneration", ENTRY)
+        self.assertIn("PauseOsdIcons := Map()", ENTRY)
+        self.assertIn("SelectObject", ENTRY)
+        self.assertIn("DeleteDC", ENTRY)
+        self.assertIn("DeleteObject", ENTRY)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ AutoHotkey v2 installieren und `noted.ahk` starten. Erwartet wird das deutsche Q
 
 CapsLock wird beim Start und Fortsetzen sicher ausgeschaltet. Physische Shift-Tasten bleiben für native Windows-Shortcuts durchgereicht; rechte Alt-Taste wird als Mod4/AltGr behandelt. Noted enthält alle sechs Ebenen, Compose/Tottasten, Navigation, Nummernblock, F-Tasten und native Shortcuts.
 
-Die Statusanzeige läuft rund zwei Sekunden auf dem Monitor des aktiven Fensters. Sie stiehlt keinen Fokus, ist klickdurchlässig und animiert die native große Icon-Grafik mit federndem Wachstum, ruhigem Halten und sanftem Schrumpfen. Schnelle Umschaltungen verwenden dasselbe Fenster erneut.
+Die Statusanzeige läuft rund zwei Sekunden auf dem Monitor des aktiven Fensters. Sie stiehlt keinen Fokus, ist klickdurchlässig und animiert die native große Icon-Grafik mit federndem Wachstum, ruhigem Halten und sanftem Schrumpfen. Vollständige Bilder werden in einem wiederverwendeten 32-Bit-Puffer vorbereitet und mit `UpdateLayeredWindow` zusammen mit Position und Größe atomar ausgegeben, ohne sichtbares Leerzeichnen oder separate Resize-/Paint-Schritte. Schnelle Umschaltungen verwenden dasselbe Fenster und die aktuelle Größe weiter; erst der letzte Wechsel bestimmt die verbleibenden zwei Sekunden. Gedrückthalten von `Strg+Ende` schaltet nur einmal bis zum Loslassen von Ende. Zusätzliche Modifikatoren wie `Strg+Shift+Ende` und die normale Ende-Taste werden nicht als Pause-Kürzel behandelt; Ende funktioniert auch bei pausierter Belegung. Beide Icons und die GDI-Ressourcen werden wiederverwendet und beim Beenden freigegeben.
 
 ## Dateien und Herkunft
 

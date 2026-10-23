@@ -370,7 +370,12 @@ AnimatePauseOsd() {
 DrawPauseOsd(size) {
     global PauseOsdGui, PauseOsdCenterX, PauseOsdCenterY
     x := Round(PauseOsdCenterX - size / 2), y := Round(PauseOsdCenterY - size / 2)
-    WinMove(x, y, size, size, PauseOsdGui)
+    previousWinDelay := A_WinDelay
+    SetWinDelay(-1)
+    try
+        WinMove(x, y, size, size, PauseOsdGui)
+    finally
+        SetWinDelay(previousWinDelay)
     DllCall("RedrawWindow", "Ptr", PauseOsdGui.Hwnd, "Ptr", 0, "Ptr", 0, "UInt", 0x121)
 }
 

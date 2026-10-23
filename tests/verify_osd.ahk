@@ -1,8 +1,17 @@
 #Requires AutoHotkey v2.0
 OnError(OsdError)
 CoordMode("Pixel", "Screen")
+global OsdFrameTimes := []
+OnMessage(0x0046, CountOsdFrame)
 SetTimer(VerifyOsd, -400)
 #Include ..\noted.ahk
+
+CountOsdFrame(wParam, lParam, message, hwnd) {
+    global PauseOsdGui, OsdFrameTimes
+    if IsSet(PauseOsdGui) && PauseOsdGui && hwnd = PauseOsdGui.Hwnd
+        if !OsdFrameTimes.Length || OsdFrameTimes[-1] != A_TickCount
+            OsdFrameTimes.Push(A_TickCount)
+}
 
 Assert(value, message) {
     if !value
@@ -15,7 +24,7 @@ OsdError(err, mode) {
 }
 
 VerifyOsd() {
-    global PauseOsdGui, PauseOsdIcon, PauseOsdStart, IsPaused
+    global PauseOsdGui, PauseOsdIcon, PauseOsdStart, IsPaused, OsdFrameTimes
     target := Gui(, "Noted OSD verification")
     target.BackColor := "222222"
     target.AddEdit("w300 h60", "Focus target")
@@ -44,6 +53,8 @@ VerifyOsd() {
     Assert(shrinkingW < w, "exit did not shrink")
     Sleep(400)
     Assert(!DllCall("IsWindowVisible", "Ptr", hwnd), "OSD did not hide near two seconds")
+    FileAppend("OSD frame updates: " OsdFrameTimes.Length "`n", "*")
+    Assert(OsdFrameTimes.Length >= 35, "animation starved by window-operation delays")
     TogglePause()
     firstStart := PauseOsdStart
     Sleep(100)

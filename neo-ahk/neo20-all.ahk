@@ -21,6 +21,7 @@ global Mod4LDown := false, Mod4RDown := false, Mod4Lock := false
 global NonModifierUsed := false, IsPaused := false
 global DualKeyRoles := Map()
 global IniPath := A_AppData "\Neo2\Neo2.ini"
+global PauseOsdGui := 0, PauseOsdPicture := 0, PauseOsdStart := 0
 
 if HasArg("--self-test")
     RunSelfTest()
@@ -529,7 +530,56 @@ TogglePause(*) {
         SetCapsLockState("AlwaysOff")
         SyncPhysicalState()
     }
-    TrayTip(IsPaused ? "Pausiert" : "Aktiv", "Neo/Noted")
+    ShowPauseOsd(!IsPaused)
+}
+
+ShowPauseOsd(enabled) {
+    global PauseOsdGui, PauseOsdPicture, PauseOsdStart
+    static iconSize := 128
+    activeWindow := WinExist("A")
+    if !PauseOsdGui {
+        PauseOsdGui := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +E0x08000000 -DPIScale")
+        PauseOsdGui.MarginX := 0, PauseOsdGui.MarginY := 0
+        PauseOsdGui.BackColor := "010203"
+        PauseOsdPicture := PauseOsdGui.AddPicture("x0 y0 w" iconSize " h" iconSize)
+    }
+    SetTimer(AnimatePauseOsd, 0)
+    PauseOsdPicture.Value := A_ScriptDir "\neo_" (enabled ? "enabled" : "disabled") ".ico"
+    monitor := MonitorForWindow(activeWindow)
+    x := monitor[1] + ((monitor[3] - monitor[1] - iconSize) // 2)
+    y := monitor[2] + ((monitor[4] - monitor[2] - iconSize) // 2)
+    PauseOsdStart := A_TickCount
+    WinSetTransColor("010203 1", PauseOsdGui)
+    PauseOsdGui.Show("NA x" x " y" y " w" iconSize " h" iconSize)
+    SetTimer(AnimatePauseOsd, 16)
+}
+
+AnimatePauseOsd() {
+    global PauseOsdGui, PauseOsdStart
+    static duration := 2000, fade := 180
+    elapsed := A_TickCount - PauseOsdStart
+    if elapsed >= duration {
+        SetTimer(AnimatePauseOsd, 0)
+        PauseOsdGui.Hide()
+        return
+    }
+    opacity := elapsed < fade ? Round(255 * elapsed / fade)
+        : elapsed > duration - fade ? Round(255 * (duration - elapsed) / fade) : 255
+    WinSetTransColor("010203 " Max(1, opacity), PauseOsdGui)
+}
+
+MonitorForWindow(window) {
+    monitor := window ? DllCall("MonitorFromWindow", "Ptr", window, "UInt", 2, "Ptr") : 0
+    if monitor {
+        info := Buffer(40, 0)
+        NumPut("UInt", 40, info, 0)
+        if DllCall("GetMonitorInfoW", "Ptr", monitor, "Ptr", info)
+            return [NumGet(info, 4, "Int"), NumGet(info, 8, "Int"),
+                NumGet(info, 12, "Int"), NumGet(info, 16, "Int")]
+    }
+    primary := MonitorGetPrimary()
+    MonitorGet(primary, &left, &top, &right, &bottom)
+    return [left, top, right, bottom]
 }
 
 ClearTrackedState(*) {

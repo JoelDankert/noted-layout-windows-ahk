@@ -1,5 +1,6 @@
 """Static checks for the active AutoHotkey v2 implementation and pinned Noted fixture."""
 import csv
+import hashlib
 import re
 import unittest
 from pathlib import Path
@@ -124,7 +125,29 @@ class ActiveV2Tests(unittest.TestCase):
         self.assertIn("Suspend(IsPaused)", toggle)
         self.assertIn("SetTrayIcon(!IsPaused)", toggle)
         self.assertLess(toggle.index("Suspend(IsPaused)"), toggle.index("SetTrayIcon(!IsPaused)"))
+        self.assertIn("ShowPauseOsd(!IsPaused)", toggle)
+        self.assertNotIn("TrayTip", toggle)
         self.assertIn("#SuspendExempt True\n^End::TogglePause()\n#SuspendExempt False", ENTRY)
+
+    def test_pause_osd_and_pinned_icons(self):
+        enabled = (ROOT / "neo-ahk/neo_enabled.ico").read_bytes()
+        disabled = (ROOT / "neo-ahk/neo_disabled.ico").read_bytes()
+        git_blob = lambda data: hashlib.sha1(
+            f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
+        self.assertEqual(24018, len(enabled))
+        self.assertEqual("08bb171a81ca2680fd4b6554f05d0b704c1eb64c", git_blob(enabled))
+        self.assertEqual(2238, len(disabled))
+        self.assertEqual("1e2c2af90b064c3393102397091133cdd482a466", git_blob(disabled))
+        self.assertIn('Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20 +E0x08000000 -DPIScale")', ENTRY)
+        self.assertIn('AddPicture("x0 y0 w" iconSize " h" iconSize)', ENTRY)
+        self.assertIn("PauseOsdStart := A_TickCount", ENTRY)
+        self.assertIn("SetTimer(AnimatePauseOsd, 16)", ENTRY)
+        self.assertIn('PauseOsdGui.Show("NA x"', ENTRY)
+        self.assertIn('DllCall("MonitorFromWindow"', ENTRY)
+        initial_alpha = 'WinSetTransColor("010203 1", PauseOsdGui)'
+        self.assertEqual(2, len(re.findall(r'^\s*WinSetTransColor\(.+, PauseOsdGui\)$', ENTRY, re.M)))
+        self.assertNotIn('"ahk_id " PauseOsdGui.Hwnd', ENTRY)
+        self.assertLess(ENTRY.index(initial_alpha), ENTRY.index('PauseOsdGui.Show("NA x"'))
 
 
 if __name__ == "__main__":

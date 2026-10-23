@@ -21,7 +21,9 @@ Use a German QWERTZ Windows input layout. Standard Noted places right Mod3 on `Ã
 - both Shift keys: Shift lock; both Mod4 keys: Mod4 lock
 - `Ctrl+End`: pause/resume
 
-The tray menu provides compact keyboard help, pause, reload, and exit controls. Switching clears compose state while retaining held physical modifier roles; pause/resume resynchronizes physical modifiers without emitting unrelated modifier-up events. CapsLock acts as Mod3 while active; pausing disables the layout hotkeys but continues to prevent ordinary Windows CapsLock toggling.
+The tray menu provides compact keyboard help, pause, reload, and exit controls. `Ctrl+End` and the tray pause command show the enabled/disabled icon at the center of the active application's monitor for about two seconds, with brief fades; the borderless click-through overlay does not take typing focus. Repeated toggles replace and restart that one overlay. Switching clears compose state while retaining held physical modifier roles; pause/resume resynchronizes physical modifiers without emitting unrelated modifier-up events. CapsLock acts as Mod3 while active; pausing disables the layout hotkeys but continues to prevent ordinary Windows CapsLock toggling. Other layout/save notifications remain normal Windows tray notifications.
+
+The enabled tray and on-screen icon is the unmodified `res/neo_enabled.ico` from [Rojetto/ReNeo](https://github.com/Rojetto/ReNeo) at commit `c0dda5a59bce714a09bc4e1f64268eaf9bd4f416` (Git blob `08bb171a81ca2680fd4b6554f05d0b704c1eb64c`, 24,018 bytes). The upstream project and this repository are GPL-3.0 licensed. The same checked-in asset is used for both the enabled tray state and the enabled overlay state; `neo_disabled.ico` supplies the corresponding disabled states.
 
 ## Verification
 

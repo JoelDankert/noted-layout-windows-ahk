@@ -11,18 +11,19 @@ global ShiftLDown := false, ShiftRDown := false, ShiftLock := false
 global Mod3LDown := false, Mod3RDown := false
 global Mod4LDown := false, Mod4RDown := false, Mod4Lock := false
 global NonModifierUsed := false, IsPaused := false
+global CapsLockGuardEnabled := false, CapsLockLifecycleStarted := false
 global PauseHotkeyLatched := false
 global PauseOsdGui := 0, PauseOsdIcons := Map(), PauseOsdIcon := 0, PauseOsdStart := 0
 global PauseOsdCenterX := 0, PauseOsdCenterY := 0
 global PauseOsdSize := 36, PauseOsdFromSize := 36, PauseOsdGeneration := 0
 global PauseOsdDc := 0, PauseOsdBitmap := 0, PauseOsdOldBitmap := 0, PauseOsdBits := 0
 
+OnExit(ReleaseAll)
 if HasArg("--self-test")
     RunSelfTest()
-SetCapsLockState("AlwaysOff")
+EnableCapsLockGuard()
 InstallTray()
 InstallHotkeys()
-OnExit(ReleaseAll)
 if HasArg("--smoke-test")
     SetTimer((*) => ExitApp(0), -500)
 return
@@ -318,14 +319,44 @@ TogglePause(*) {
     Critical("On")
     try {
         IsPaused := !IsPaused
+        if IsPaused
+            DisableCapsLockGuard()
+        else
+            EnableCapsLockGuard()
         ClearTrackedState()
         Suspend(IsPaused)
         SetTrayIcon(!IsPaused)
         if !IsPaused {
-            SetCapsLockState("AlwaysOff")
             SyncPhysicalState()
         }
         ShowPauseOsd(!IsPaused)
+    } finally {
+        Critical(previousCritical ? previousCritical : "Off")
+    }
+}
+
+EnableCapsLockGuard() {
+    global CapsLockGuardEnabled, CapsLockLifecycleStarted
+    SetCapsLockState("AlwaysOff")
+    CapsLockLifecycleStarted := true
+    CapsLockGuardEnabled := true
+    SetTimer(CapsLockGuard, 50)
+}
+
+DisableCapsLockGuard() {
+    global CapsLockGuardEnabled
+    CapsLockGuardEnabled := false
+    SetTimer(CapsLockGuard, 0)
+    SetCapsLockState("Off")
+}
+
+CapsLockGuard() {
+    global CapsLockGuardEnabled, IsPaused
+    previousCritical := A_IsCritical
+    Critical("On")
+    try {
+        if CapsLockGuardEnabled && !IsPaused && GetKeyState("CapsLock", "T")
+            SetCapsLockState("AlwaysOff")
     } finally {
         Critical(previousCritical ? previousCritical : "Off")
     }
@@ -472,7 +503,13 @@ SyncPhysicalState() {
 }
 
 ReleaseAll(*) {
+    global IsPaused, CapsLockGuardEnabled, CapsLockLifecycleStarted
     global PauseOsdGui, PauseOsdIcons, PauseOsdIcon, PauseOsdDc, PauseOsdBitmap, PauseOsdOldBitmap, PauseOsdBits
+    previousCritical := A_IsCritical
+    Critical("On")
+    IsPaused := true
+    if CapsLockLifecycleStarted
+        DisableCapsLockGuard()
     SetTimer(AnimatePauseOsd, 0)
     ClearTrackedState()
     if PauseOsdDc && PauseOsdOldBitmap
@@ -491,6 +528,7 @@ ReleaseAll(*) {
         PauseOsdGui.Destroy()
         PauseOsdGui := 0
     }
+    Critical(previousCritical ? previousCritical : "Off")
 }
 
 RunSelfTest() {

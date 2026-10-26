@@ -137,6 +137,19 @@ class NotedDistributionTests(unittest.TestCase):
         self.assertIn("DeleteDC", ENTRY)
         self.assertIn("DeleteObject", ENTRY)
 
+    def test_capslock_lifecycle_contract(self):
+        self.assertLess(ENTRY.index("OnExit(ReleaseAll)"), ENTRY.index('HasArg("--self-test")'))
+        self.assertIn('SetTimer(CapsLockGuard, 50)', ENTRY)
+        self.assertRegex(ENTRY, r'(?s)CapsLockGuard\(\).*?CapsLockGuardEnabled && !IsPaused'
+                                r'.*?GetKeyState\("CapsLock", "T"\).*?SetCapsLockState\("AlwaysOff"\)')
+        self.assertRegex(ENTRY, r'(?s)TogglePause\([^)]*\).*?IsPaused := !IsPaused'
+                                r'.*?if IsPaused\s+DisableCapsLockGuard\(\)')
+        self.assertRegex(ENTRY, r'(?s)DisableCapsLockGuard\(\).*?CapsLockGuardEnabled := false'
+                                r'.*?SetTimer\(CapsLockGuard, 0\).*?SetCapsLockState\("Off"\)')
+        release = ENTRY.index("\nReleaseAll(*)")
+        self.assertLess(ENTRY.index("DisableCapsLockGuard()", release),
+                        ENTRY.index("SetTimer(AnimatePauseOsd, 0)", release))
+
 
 if __name__ == "__main__":
     unittest.main()

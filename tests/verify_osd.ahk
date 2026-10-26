@@ -205,11 +205,45 @@ VerifyOsd() {
         "cached GDI resources became invalid")
     Assert(PauseOsdGui.Hwnd = hwnd && WinExist("A") = focused, "stress changed HWND or focus")
 
+    ; CapsLock is physical Mod3 while active, but pause must release AlwaysOff so
+    ; Windows can toggle it normally. The active guard also repairs external state.
+    if !IsPaused
+        TogglePause("caps normalize paused")
+    InjectKey(0x14), InjectKey(0x14, true)
+    Sleep(100)
+    Assert(GetKeyState("CapsLock", "T"), "paused native CapsLock did not turn on")
+    InjectKey(0x14), InjectKey(0x14, true)
+    Sleep(100)
+    Assert(!GetKeyState("CapsLock", "T"), "paused native CapsLock did not turn off")
+    loop 3 {
+        InjectKey(0x14), InjectKey(0x14, true)
+        Sleep(60)
+        Assert(GetKeyState("CapsLock", "T"), "paused CapsLock cycle did not turn on")
+        InjectKey(0x14), InjectKey(0x14, true)
+        Sleep(60)
+        Assert(!GetKeyState("CapsLock", "T"), "paused CapsLock cycle did not turn off")
+    }
+    SetCapsLockState("On")
+    TogglePause("caps resume")
+    Sleep(100)
+    Assert(!IsPaused && !GetKeyState("CapsLock", "T"), "resume did not clear CapsLock")
+    SetCapsLockState("On")
+    Sleep(150)
+    Assert(!GetKeyState("CapsLock", "T"), "active guard did not repair external CapsLock on")
+    InjectKey(0x14), InjectKey(0x14, true)
+    Sleep(100)
+    Assert(!GetKeyState("CapsLock", "T") && !Mod3LDown,
+        "active physical CapsLock toggled state or left Mod3 held")
+
     SetTimer(ObservePublishedFrame, 0)
     ReleaseAll()
+    SetCapsLockState("On")
+    Sleep(150)
+    Assert(GetKeyState("CapsLock", "T"), "ReleaseAll left CapsLock enforcement installed")
+    SetCapsLockState("Off")
     Assert(!DllCall("GetObjectType", "Ptr", dcBefore) && !DllCall("GetObjectType", "Ptr", bitmapBefore),
         "OSD DC/bitmap were not released")
-    FileAppend("PASS: atomic layered frames; continuity/burst/latest-expiry; injected hook latch; "
+    FileAppend("PASS: atomic layered frames; continuity/burst/latest-expiry; injected hook latch; CapsLock lifecycle; "
         moving " moving frames; cached handles stable/released; GetGuiResources GDI "
         gdiBefore "->" gdiAfter ", USER " userBefore "->" userAfter "`n", "*")
     ExitApp(0)

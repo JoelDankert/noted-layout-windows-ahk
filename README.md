@@ -17,6 +17,12 @@ Solange Noted aktiv ist, bleibt CapsLock ausgeschaltet und die physische Taste a
 
 Die Statusanzeige läuft rund zwei Sekunden auf dem Monitor des aktiven Fensters. Sie stiehlt keinen Fokus, ist klickdurchlässig und animiert die native große Icon-Grafik mit federndem Wachstum, ruhigem Halten und sanftem Schrumpfen. Vollständige Bilder werden in einem wiederverwendeten 32-Bit-Puffer vorbereitet und mit `UpdateLayeredWindow` zusammen mit Position und Größe atomar ausgegeben, ohne sichtbares Leerzeichnen oder separate Resize-/Paint-Schritte. Schnelle Umschaltungen verwenden dasselbe Fenster und die aktuelle Größe weiter; erst der letzte Wechsel bestimmt die verbleibenden zwei Sekunden. Gedrückthalten von `Strg+Ende` schaltet nur einmal bis zum Loslassen von Ende. Zusätzliche Modifikatoren wie `Strg+Shift+Ende` und die normale Ende-Taste werden nicht als Pause-Kürzel behandelt; Ende funktioniert auch bei pausierter Belegung. Beide Icons und die GDI-Ressourcen werden wiederverwendet und beim Beenden freigegeben.
 
+## Credits
+
+Historischer Ausgangspunkt dieses Projekts war [kingdase/neo2-layout-windows-ahk](https://github.com/kingdase/neo2-layout-windows-ahk). Danke an kingdase und die ursprünglichen Neo-Entwickler für diese Vorarbeit.
+
+Der heutige Treiber wird als eigenständige, ausschließlich auf Standard-Noted ausgerichtete AutoHotkey-v2-Implementierung weiterentwickelt. Belegungsdaten und Icons sind oben unter „Dateien und Herkunft“ gesondert zugeordnet. Die Herkunft und die GPL-3.0-Lizenzierung bleiben erhalten.
+
 ## Dateien und Herkunft
 
 - `noted.ahk`: AHK-v2-Laufzeit

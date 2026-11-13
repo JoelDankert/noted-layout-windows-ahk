@@ -86,9 +86,27 @@ VerifyOsd() {
     Sleep(100)
     focused := WinExist("A")
 
+    notedRows := BuildNotedData(), neoRows := BuildNeoQwertzData()
+    Assert(notedRows.Count = 91 && neoRows.Count = 91, "layout row count changed")
+    for key, notedRow in notedRows {
+        neoRow := neoRows[key]
+        Assert(neoRow[1] = notedRow[1], key " caps metadata differs")
+        loop 6
+            Assert(neoRow[A_Index + 3] = notedRow[A_Index + 3],
+                key " Noted slot " (A_Index + 3) " differs")
+    }
+    Assert(neoRows["sc01A"][4] = "@", "NeoQwertz M3 Ü must remain Noted @")
+    Assert(neoRows["sc027"][5] = ".", "NeoQwertz M4 Ö must remain Noted dot")
+
     ; NeoQwertz retains Noted's physical Compose/dead-key roles. Only subsequent
     ; letter interpretation changes to QWERTZ; exercise the actual registered hooks.
     SelectLayout("NeoQwertz")
+    edit.Value := "", edit.Focus()
+    InjectScan(0x3A), Sleep(25), TapScan(0x1A), InjectScan(0x3A, true), Sleep(40)
+    Assert(edit.Value = "@", "NeoQwertz Mod3+physical Ü was not Noted @: " edit.Value)
+    edit.Value := "", edit.Focus()
+    InjectScan(0x56), Sleep(25), TapScan(0x27), InjectScan(0x56, true), Sleep(40)
+    Assert(edit.Value = ".", "NeoQwertz Mod4+physical Ö was not Noted dot: " edit.Value)
     edit.Value := "", edit.Focus()
     StartPhysicalCompose(), TapScan(0x18), TapScan(0x2E) ; O, C
     Assert(edit.Value = "©", "CapsLock+Ä Compose did not use QWERTZ O,C: " edit.Value)

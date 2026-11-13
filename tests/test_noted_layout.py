@@ -80,25 +80,39 @@ class NotedDistributionTests(unittest.TestCase):
         self.assertIn('#SuspendExempt True\n*End::PauseEndDown()\n~*End up::PauseHotkeyUp()', ENTRY)
         self.assertLess(ENTRY.index('HasArg("--self-test")'), ENTRY.index('SetCapsLockState("AlwaysOff")'))
 
-    def test_neoqwertz_authoritative_overrides_and_modifier_roles(self):
+    def test_neoqwertz_changes_only_qwertz_base_letters(self):
         self.assertIn('BuildNeoQwertzData()', DATA)
         expected = {
-            "sc010": ('q', 'ϕ', 'ℚ'), "sc015": ('z', 'ζ', 'ℤ'),
-            "sc01E": ('a', 'α', '∀'), "sc023": ('h', 'ψ', 'Ψ'),
-            "sc02C": ('y', 'υ', '∇'),
-            "sc016": ('u', 'ψ', '⊂'), "sc01A": ('ü', 'ς', '∪'),
-            "sc02F": ('v', 'π', '√'),
-            "sc035": ('-', '‑', '\u00ad'),
+            "sc00C": ("ß", "ẞ"),
+            "sc010": ("q", "Q"), "sc011": ("w", "W"), "sc012": ("e", "E"),
+            "sc013": ("r", "R"), "sc014": ("t", "T"), "sc015": ("z", "Z"),
+            "sc016": ("u", "U"), "sc017": ("i", "I"), "sc018": ("o", "O"),
+            "sc019": ("p", "P"), "sc01A": ("ü", "Ü"),
+            "sc01E": ("a", "A"), "sc01F": ("s", "S"), "sc020": ("d", "D"),
+            "sc021": ("f", "F"), "sc022": ("g", "G"), "sc023": ("h", "H"),
+            "sc024": ("j", "J"), "sc025": ("k", "K"), "sc026": ("l", "L"),
+            "sc027": ("ö", "Ö"), "sc02C": ("y", "Y"), "sc02D": ("x", "X"),
+            "sc02E": ("c", "C"), "sc02F": ("v", "V"), "sc030": ("b", "B"),
+            "sc031": ("n", "N"), "sc032": ("m", "M"),
+            "sc033": (",", "–"), "sc034": (".", "•"), "sc035": ("-", "—"),
         }
         neo = DATA.split("BuildNeoQwertzData() {", 1)[1].split("\n}\n\nBuildComposeData", 1)[0]
-        for key, values in expected.items():
+        pairs = {key: (normal, shifted) for key, normal, shifted in
+                 re.findall(r'"(sc[0-9A-F]+)", \["([^"]*)", "([^"]*)"(?:, [^]]*)?\]', neo)}
+        self.assertEqual(expected, pairs)
+        mutations = re.findall(r'data\[(?:key|"([^"]+)")\]\[(\d+)\]\s*:=', neo)
+        self.assertEqual([("", "2"), ("", "3")], mutations)
+        noted = rows()
+        neo_rows = {key: values[:] for key, values in noted.items()}
+        for key, (normal, shifted) in pairs.items():
+            neo_rows[key][1:3] = [normal, shifted]
+        self.assertEqual(set(noted), set(neo_rows))
+        for key in noted:
             with self.subTest(key=key):
-                self.assertIn(f'"{key}"', neo)
-                for value_ in values:
-                    self.assertIn(f'"{value_}"', neo)
-        self.assertNotIn('data["sc028"] :=', neo)
-        self.assertNotIn('data["sc02B"] :=', neo)
-        self.assertNotIn('data["sc01B"] :=', neo)
+                self.assertEqual(noted[key][0], neo_rows[key][0])
+                self.assertEqual(noted[key][3:9], neo_rows[key][3:9])
+        self.assertEqual("@", neo_rows["sc01A"][3])
+        self.assertEqual(".", neo_rows["sc027"][4])
         self.assertIn('RightMod3Key := "sc028"', ENTRY)
 
     def test_selection_persistence_pause_resume_and_mutex_contract(self):

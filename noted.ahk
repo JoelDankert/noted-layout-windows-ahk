@@ -1,12 +1,13 @@
 ﻿#Requires AutoHotkey v2.0
-#SingleInstance Force
+#SingleInstance Off
 SetWorkingDir(A_ScriptDir)
 #Include data.ahk
 
 global RuntimeDir := RegExReplace(A_LineFile, "\\[^\\]+$")
-global Layout := BuildNotedData()
-global ComposeData := BuildComposeData()
-global ComposePrefixes := ComposeData[1], ComposeExact := ComposeData[2], ComposeBuffer := ""
+global InstanceMutex := 0
+global SelectedLayout := "Noted", Layout := Map(), RightMod3Key := "sc028"
+global SettingsFile := SettingsPath()
+global ComposeData := 0, ComposePrefixes := Map(), ComposeExact := Map(), ComposeBuffer := ""
 global ShiftLDown := false, ShiftRDown := false, ShiftLock := false
 global Mod3LDown := false, Mod3RDown := false
 global Mod4LDown := false, Mod4RDown := false, Mod4Lock := false
@@ -18,9 +19,17 @@ global PauseOsdCenterX := 0, PauseOsdCenterY := 0
 global PauseOsdSize := 36, PauseOsdFromSize := 36, PauseOsdGeneration := 0
 global PauseOsdDc := 0, PauseOsdBitmap := 0, PauseOsdOldBitmap := 0, PauseOsdBits := 0
 
-OnExit(ReleaseAll)
-if HasArg("--self-test")
+if HasArg("--self-test") {
+    Layout := BuildNotedData(), ComposeData := BuildComposeData()
+    ComposePrefixes := ComposeData[1], ComposeExact := ComposeData[2]
     RunSelfTest()
+}
+AcquireInstanceMutex()
+OnExit(ReleaseAll)
+SelectedLayout := LoadSelectedLayout()
+ApplyLayoutData(SelectedLayout)
+ComposeData := BuildComposeData()
+ComposePrefixes := ComposeData[1], ComposeExact := ComposeData[2]
 EnableCapsLockGuard()
 InstallTray()
 InstallHotkeys()
@@ -40,13 +49,67 @@ HasArg(wanted) {
     return false
 }
 
+AcquireInstanceMutex() {
+    global InstanceMutex
+    InstanceMutex := DllCall("CreateMutexW", "Ptr", 0, "Int", false,
+        "Str", "Local\NotedLayoutWindowsAhk", "Ptr")
+    alreadyExists := A_LastError = 183
+    if !InstanceMutex
+        throw Error("Instanzschutz konnte nicht erstellt werden (Win32 " A_LastError ")")
+    if alreadyExists {
+        DllCall("CloseHandle", "Ptr", InstanceMutex)
+        InstanceMutex := 0
+        MsgBox("Noted läuft bereits.", "Noted", 0x30)
+        ExitApp(0)
+    }
+}
+
+SettingsPath() {
+    base := EnvGet("APPDATA")
+    if base = ""
+        base := A_AppData
+    return base "\NotedLayoutWindowsAhk\settings.ini"
+}
+
+NormalizeSelectedLayout(value) {
+    return value = "NeoQwertz" ? "NeoQwertz" : "Noted"
+}
+
+LoadSelectedLayout() {
+    global SettingsFile
+    try return NormalizeSelectedLayout(IniRead(SettingsFile, "Layout", "Selected", "Noted"))
+    catch
+        return "Noted"
+}
+
+SaveSelectedLayout(name) {
+    global SettingsFile
+    try {
+        SplitPath(SettingsFile,, &directory)
+        DirCreate(directory)
+        IniWrite(name, SettingsFile, "Layout", "Selected")
+        return true
+    } catch {
+        return false
+    }
+}
+
+ApplyLayoutData(name) {
+    global Layout, RightMod3Key
+    Layout := name = "NeoQwertz" ? BuildNeoQwertzData() : BuildNotedData()
+    RightMod3Key := name = "NeoQwertz" ? "sc02B" : "sc028"
+}
+
 InstallHotkeys() {
-    global Layout
+    global Layout, RightMod3Key
     for key, unused in Layout
-        if key != "sc028" && key != "end"
+        if key != "sc028" && key != "sc02B" && key != "end"
             Hotkey("*" key, KeyDown.Bind(key))
-    Hotkey("*sc028", ModifierDown.Bind("mod3R"))
-    Hotkey("*sc028 up", ModifierUp.Bind("mod3R"))
+    Hotkey("*sc028", KeyDown.Bind("sc028"))
+    Hotkey("*sc028 up", (*) => 0)
+    Hotkey("*sc02B", KeyDown.Bind("sc02B"))
+    Hotkey("*sc02B up", (*) => 0)
+    ConfigureRightMod3(RightMod3Key)
     Hotkey("~*LShift", ModifierDown.Bind("shiftL"))
     Hotkey("~*LShift up", ModifierUp.Bind("shiftL"))
     Hotkey("~*RShift", ModifierDown.Bind("shiftR"))
@@ -57,6 +120,16 @@ InstallHotkeys() {
     Hotkey("*sc056 up", ModifierUp.Bind("mod4L"))
     Hotkey("*RAlt", ModifierDown.Bind("mod4R"))
     Hotkey("*RAlt up", ModifierUp.Bind("mod4R"))
+}
+
+ConfigureRightMod3(key) {
+    global RightMod3Key
+    other := key = "sc028" ? "sc02B" : "sc028"
+    Hotkey("*" other, KeyDown.Bind(other))
+    Hotkey("*" other " up", (*) => 0)
+    Hotkey("*" key, ModifierDown.Bind("mod3R"))
+    Hotkey("*" key " up", ModifierUp.Bind("mod3R"))
+    RightMod3Key := key
 }
 
 ModifierDown(which, *) {
@@ -300,11 +373,47 @@ MonitorForWindow(window) {
 }
 
 InstallTray() {
+    global SelectedLayout
     SetTrayIcon(true)
     A_TrayMenu.Delete()
     A_TrayMenu.Add("Pausieren (Strg+Ende)", TogglePause)
-    A_TrayMenu.Add("Neu laden", (*) => Reload())
+    A_TrayMenu.Add()
+    A_TrayMenu.Add("Noted", SelectLayout.Bind("Noted"))
+    A_TrayMenu.Add("NeoQwertz", SelectLayout.Bind("NeoQwertz"))
+    A_TrayMenu.Check(SelectedLayout)
+    A_TrayMenu.Add()
+    A_TrayMenu.Add("Neu laden", ReloadApplication)
     A_TrayMenu.Add("Beenden", (*) => ExitApp())
+}
+
+SelectLayout(name, *) {
+    global SelectedLayout, IsPaused
+    name := NormalizeSelectedLayout(name)
+    previousCritical := A_IsCritical
+    Critical("On")
+    try {
+        ClearTrackedState()
+        Suspend(false)
+        ApplyLayoutData(name)
+        ConfigureRightMod3(name = "NeoQwertz" ? "sc02B" : "sc028")
+        SelectedLayout := name
+        IsPaused := false
+        EnableCapsLockGuard()
+        SyncPhysicalState()
+        if !SaveSelectedLayout(name)
+            MsgBox("Die Auswahl konnte nicht gespeichert werden. Sie gilt nur bis zum Beenden.", "Noted", "Icon!")
+        A_TrayMenu.Uncheck("Noted"), A_TrayMenu.Uncheck("NeoQwertz")
+        A_TrayMenu.Check(name)
+        A_TrayMenu.Uncheck("Pausieren (Strg+Ende)")
+        SetTrayIcon(true)
+        ShowPauseOsd(true)
+    } finally {
+        Critical(previousCritical ? previousCritical : "Off")
+    }
+}
+
+ReloadApplication(*) {
+    Reload()
 }
 
 SetTrayIcon(enabled) {
@@ -325,6 +434,10 @@ TogglePause(*) {
             EnableCapsLockGuard()
         ClearTrackedState()
         Suspend(IsPaused)
+        if IsPaused
+            A_TrayMenu.Check("Pausieren (Strg+Ende)")
+        else
+            A_TrayMenu.Uncheck("Pausieren (Strg+Ende)")
         SetTrayIcon(!IsPaused)
         if !IsPaused {
             SyncPhysicalState()
@@ -496,14 +609,14 @@ ClearTrackedState(*) {
 }
 
 SyncPhysicalState() {
-    global ShiftLDown, ShiftRDown, Mod3LDown, Mod3RDown, Mod4LDown, Mod4RDown
+    global ShiftLDown, ShiftRDown, Mod3LDown, Mod3RDown, Mod4LDown, Mod4RDown, RightMod3Key
     ShiftLDown := GetKeyState("LShift", "P"), ShiftRDown := GetKeyState("RShift", "P")
-    Mod3LDown := GetKeyState("CapsLock", "P"), Mod3RDown := GetKeyState("sc028", "P")
+    Mod3LDown := GetKeyState("CapsLock", "P"), Mod3RDown := GetKeyState(RightMod3Key, "P")
     Mod4LDown := GetKeyState("sc056", "P"), Mod4RDown := GetKeyState("RAlt", "P")
 }
 
 ReleaseAll(*) {
-    global IsPaused, CapsLockGuardEnabled, CapsLockLifecycleStarted
+    global IsPaused, CapsLockGuardEnabled, CapsLockLifecycleStarted, InstanceMutex
     global PauseOsdGui, PauseOsdIcons, PauseOsdIcon, PauseOsdDc, PauseOsdBitmap, PauseOsdOldBitmap, PauseOsdBits
     previousCritical := A_IsCritical
     Critical("On")
@@ -527,6 +640,10 @@ ReleaseAll(*) {
     if PauseOsdGui {
         PauseOsdGui.Destroy()
         PauseOsdGui := 0
+    }
+    if InstanceMutex {
+        DllCall("CloseHandle", "Ptr", InstanceMutex)
+        InstanceMutex := 0
     }
     Critical(previousCritical ? previousCritical : "Off")
 }

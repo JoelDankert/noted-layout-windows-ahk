@@ -40,7 +40,8 @@ def value(symbol):
 
 def rows():
     result = {}
-    for key, body in re.findall(r'^\s*data\["([^"]+)"\] := \[(.*?)\]$', DATA, re.M):
+    noted = DATA.split("BuildNotedData() {", 1)[1].split("\n}\n\nBuildNeoQwertzData", 1)[0]
+    for key, body in re.findall(r'^\s*data\["([^"]+)"\] := \[(.*?)\]$', noted, re.M):
         cap = int(body[0])
         fields = [s.replace("``", "`").replace('`"', '"')
                   for s in re.findall(r'"((?:``|`"|[^"])*)"', body)]
@@ -67,23 +68,59 @@ class NotedDistributionTests(unittest.TestCase):
                           "tests/verify_osd.ahk"}, files)
         self.assertFalse(any(ROOT.rglob("*.exe")))
 
-    def test_entrypoint_is_noted_only_v2(self):
+    def test_entrypoint_is_v2_and_layout_aware(self):
         self.assertIn("#Requires AutoHotkey v2.0", ENTRY)
         self.assertIn("#Include data.ahk", ENTRY)
-        for stale in ("NeoBase", "Variant", "QWERTZ", "NordTast", "IniRead", "IniWrite", "F7"):
+        for stale in ("NeoBase", "Variant", "NordTast"):
             self.assertNotIn(stale, ENTRY)
-        self.assertIn('Hotkey("*sc028", ModifierDown.Bind("mod3R"))', ENTRY)
-        self.assertIn('if key != "sc028" && key != "end"\n            Hotkey("*" key, KeyDown.Bind(key))', ENTRY)
+        self.assertIn('ConfigureRightMod3(RightMod3Key)', ENTRY)
+        self.assertIn('key != "sc028" && key != "sc02B" && key != "end"', ENTRY)
         self.assertIn('data["sc02B"]', DATA)
         self.assertIn('Hotkey("~*RShift"', ENTRY)
         self.assertIn('#SuspendExempt True\n*End::PauseEndDown()\n~*End up::PauseHotkeyUp()', ENTRY)
         self.assertLess(ENTRY.index('HasArg("--self-test")'), ENTRY.index('SetCapsLockState("AlwaysOff")'))
 
+    def test_neoqwertz_authoritative_overrides_and_modifier_roles(self):
+        self.assertIn('BuildNeoQwertzData()', DATA)
+        expected = {
+            "sc010": ('q', 'ϕ', 'ℚ'), "sc015": ('z', 'ζ', 'ℤ'),
+            "sc01E": ('a', 'α', '∀'), "sc023": ('h', 'ψ', 'Ψ'),
+            "sc028": ('ä', 'η', 'ℵ'), "sc02C": ('y', 'υ', '∇'),
+            "sc016": ('u', 'ψ', '⊂'), "sc01A": ('ü', 'ς', '∪'),
+            "sc02F": ('v', 'π', '√'),
+            "sc035": ('-', '‑', '\u00ad'),
+        }
+        neo = DATA.split("BuildNeoQwertzData() {", 1)[1].split("\n}\n\nBuildComposeData", 1)[0]
+        for key, values in expected.items():
+            with self.subTest(key=key):
+                self.assertIn(f'"{key}"', neo)
+                for value_ in values:
+                    self.assertIn(f'"{value_}"', neo)
+        self.assertIn('data["sc028"] := [1, "ä", "Ä", "@", ".", "η", "ℵ", "S__NDot"', neo)
+        self.assertIn('data["sc02B"] := [0, "", "", "", "", "", "", "", ""]', neo)
+        self.assertIn('RightMod3Key := name = "NeoQwertz" ? "sc02B" : "sc028"', ENTRY)
+
+    def test_selection_persistence_pause_resume_and_mutex_contract(self):
+        self.assertIn('#SingleInstance Off', ENTRY)
+        self.assertIn('"Local\\NotedLayoutWindowsAhk"', ENTRY)
+        self.assertRegex(ENTRY, r'(?s)alreadyExists := A_LastError = 183.*?CloseHandle.*?Noted läuft bereits\..*?ExitApp')
+        self.assertLess(ENTRY.index("AcquireInstanceMutex()\nOnExit"), ENTRY.index("ComposeData := BuildComposeData()", ENTRY.index("AcquireInstanceMutex()\nOnExit")))
+        self.assertIn('EnvGet("APPDATA")', ENTRY)
+        self.assertIn('IniRead(SettingsFile, "Layout", "Selected", "Noted")', ENTRY)
+        self.assertIn('catch\n        return "Noted"', ENTRY)
+        self.assertIn('IniWrite(name, SettingsFile, "Layout", "Selected")', ENTRY)
+        self.assertRegex(ENTRY, r'(?s)SelectLayout\(name, \*\).*?ClearTrackedState\(\).*?Suspend\(false\).*?EnableCapsLockGuard\(\).*?SyncPhysicalState\(\).*?ShowPauseOsd\(true\)')
+        self.assertIn('A_TrayMenu.Add("Noted"', ENTRY)
+        self.assertIn('A_TrayMenu.Add("NeoQwertz"', ENTRY)
+        self.assertIn('A_TrayMenu.Check(SelectedLayout)', ENTRY)
+        self.assertIn('A_TrayMenu.Check("Pausieren (Strg+Ende)")', ENTRY)
+
     def test_complete_resolved_table_is_pinned(self):
         parsed = rows()
         self.assertEqual(91, len(parsed))
+        noted = DATA.split("BuildNotedData() {", 1)[1].split("\n}\n\nBuildNeoQwertzData", 1)[0]
         canonical = "\n".join(f"{key}={body}" for key, body in
-                              re.findall(r'^\s*data\["([^"]+)"\] := \[(.*?)\]$', DATA, re.M))
+                              re.findall(r'^\s*data\["([^"]+)"\] := \[(.*?)\]$', noted, re.M))
         self.assertEqual("efd492b8b410da3083bdaf1a5632e32f4964301e64c113bbb60c317e51b31cd2",
                          hashlib.sha256(canonical.encode()).hexdigest())
         self.assertEqual("]", parsed["sc013"][3])  # inherited NoSymbol is concrete
@@ -138,7 +175,7 @@ class NotedDistributionTests(unittest.TestCase):
         self.assertIn("DeleteObject", ENTRY)
 
     def test_capslock_lifecycle_contract(self):
-        self.assertLess(ENTRY.index("OnExit(ReleaseAll)"), ENTRY.index('HasArg("--self-test")'))
+        self.assertLess(ENTRY.index('HasArg("--self-test")'), ENTRY.index("OnExit(ReleaseAll)"))
         self.assertIn('SetTimer(CapsLockGuard, 50)', ENTRY)
         self.assertRegex(ENTRY, r'(?s)CapsLockGuard\(\).*?CapsLockGuardEnabled && !IsPaused'
                                 r'.*?GetKeyState\("CapsLock", "T"\).*?SetCapsLockState\("AlwaysOff"\)')

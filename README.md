@@ -7,13 +7,13 @@ Eine bewusst minimale AutoHotkey-v2-Distribution für **Noted** und **NeoQwertz*
 AutoHotkey v2 installieren und `noted.ahk` starten. Erwartet wird das deutsche QWERTZ-Windows-Tastaturlayout.
 
 - linkes Mod3: physische CapsLock-Taste
-- rechtes Mod3: physische `Ä`-Taste (`SC028`)
+- rechtes Mod3: bei Noted `Ä` (`SC028`), bei NeoQwertz `#` (`SC02B`)
 - Mod4: ISO-`<>` und rechte Alt-Taste
-- Akut-/Tilde-/Strich-Tottaste: physische `#`-Taste (`SC02B`)
+- Akut-/Tilde-/Strich-Tottaste: bei Noted `#` (`SC02B`), bei NeoQwertz `+` (`SC01B`)
 - beide Shift-Tasten: Shift-Lock; beide Mod4-Tasten: Mod4-Lock
 - `Strg+Ende`: pausieren/fortsetzen (auch während Suspend erreichbar)
 
-Das Traymenü wählt Noted oder NeoQwertz und markiert die aktuelle Auswahl. Ein Wechsel aktiviert die neue Belegung sofort, auch aus dem pausierten Zustand; `Strg+Ende` pausiert beziehungsweise aktiviert danach diese Auswahl. Sie wird unter `%APPDATA%\NotedLayoutWindowsAhk\settings.ini` gespeichert, bei fehlender oder ungültiger Datei gilt Noted. NeoQwertz ist dabei **Noted unverändert außer den Grund-/Shift-Buchstaben**, die QWERTZ folgen. Die physische Ä-Taste bleibt wie in Noted für rechtes Mod3 und Compose reserviert.
+Das Traymenü wählt Noted oder NeoQwertz und markiert die aktuelle Auswahl. Ein Wechsel aktiviert die neue Belegung sofort, auch aus dem pausierten Zustand; `Strg+Ende` pausiert beziehungsweise aktiviert danach diese Auswahl. Sie wird unter `%APPDATA%\NotedLayoutWindowsAhk\settings.ini` gespeichert, bei fehlender oder ungültiger Datei gilt Noted. In NeoQwertz schreibt die Ä-Taste normal `ä`/`Ä`.
 
 Eine zweite Instanz – auch aus einem anderen Verzeichnis – zeigt `Noted läuft bereits.` und beendet sich, ohne die laufende Belegung oder CapsLock anzufassen. „Neu laden“ im Tray bleibt möglich.
 
@@ -36,7 +36,7 @@ Der heutige Treiber wird als eigenständige AutoHotkey-v2-Implementierung für N
 
 Die Standard-Noted-Belegung folgt `dariogoetz/noted-layout` `xkb/noted` bei Commit `20f43c1a27736a5f894f6fe32620d41e629a5aab`; die gepinnte Fixture liegt unter `tests/fixtures/noted.xkb`. `NoSymbol`-Werte sind in `BuildNotedData` bereits konkret aus der bisherigen Neo-Basis aufgelöst, `VoidSymbol` bleibt leer. Git-Historie enthält die entfernten Legacy-/Generatorquellen.
 
-Die hier angebotene NeoQwertz-Variante ist bewusst kein gemischtes Standard-XKB-NeoQwertz: Sie übernimmt ausschließlich die QWERTZ-Grund- und Shift-Buchstaben. Caps-Metadaten sowie alle Noted-Ebenen ab Mod3 bleiben an jeder Taste bytegleich erhalten.
+NeoQwertz folgt der [offiziellen Beschreibung](https://neo-layout.org/Layouts/neoqwertz/) und den installierten, maßgeblichen XKB-Blöcken `de(neo_base)`/`de(neo_qwertz_base)` aus `xkb-data` 2.42-1 (`/usr/share/X11/xkb/symbols/de`, SHA-256 `4e5710a31d27b40dc056e71d274531a57d3eea672e28be83f163fdfc9e2200bf`). Daher bleiben die Neo-Ebenen 3/4 an ihren physischen Positionen; griechische und mathematische Ebenen folgen den QWERTZ-Buchstaben.
 
 ## Prüfung
 

@@ -43,8 +43,8 @@ TapScan(scan) {
 }
 
 StartPhysicalCompose(rightFirst := false) {
-    first := rightFirst ? 0x28 : 0x3A
-    second := rightFirst ? 0x3A : 0x28
+    first := rightFirst ? 0x2B : 0x3A
+    second := rightFirst ? 0x3A : 0x2B
     InjectScan(first), Sleep(25), InjectScan(second), Sleep(25)
     InjectScan(second, true), InjectScan(first, true), Sleep(50)
 }
@@ -86,40 +86,45 @@ VerifyOsd() {
     Sleep(100)
     focused := WinExist("A")
 
-    notedRows := BuildNotedData(), neoRows := BuildNeoQwertzData()
-    Assert(notedRows.Count = 91 && neoRows.Count = 91, "layout row count changed")
-    for key, notedRow in notedRows {
-        neoRow := neoRows[key]
-        Assert(neoRow[1] = notedRow[1], key " caps metadata differs")
-        loop 6
-            Assert(neoRow[A_Index + 3] = notedRow[A_Index + 3],
-                key " Noted slot " (A_Index + 3) " differs")
-    }
-    Assert(neoRows["sc01A"][4] = "@", "NeoQwertz M3 Ü must remain Noted @")
-    Assert(neoRows["sc027"][5] = ".", "NeoQwertz M4 Ö must remain Noted dot")
+    neoRows := BuildNeoQwertzData()
+    Assert(neoRows.Count = 91, "NeoQwertz row count changed")
+    Assert(neoRows["sc028"][2] = "ä" && neoRows["sc028"][3] = "Ä", "NeoQwertz Ä must be an ordinary letter")
+    Assert(neoRows["sc02B"][2] = "" && neoRows["sc01B"][2] = "T__acut", "NeoQwertz modifier/dead-key roles wrong")
+    Assert(neoRows["sc01E"][6] = "α" && neoRows["sc01E"][7] = "∀", "NeoQwertz Greek/math must follow QWERTZ A")
 
-    ; NeoQwertz retains Noted's physical Compose/dead-key roles. Only subsequent
-    ; letter interpretation changes to QWERTZ; exercise the actual registered hooks.
     SelectLayout("NeoQwertz")
     edit.Value := "", edit.Focus()
-    InjectScan(0x3A), Sleep(25), TapScan(0x1A), InjectScan(0x3A, true), Sleep(40)
-    Assert(edit.Value = "@", "NeoQwertz Mod3+physical Ü was not Noted @: " edit.Value)
+    TapScan(0x28)
+    Assert(edit.Value = "ä", "NeoQwertz physical Ä did not type ä: " edit.Value)
     edit.Value := "", edit.Focus()
-    InjectScan(0x56), Sleep(25), TapScan(0x27), InjectScan(0x56, true), Sleep(40)
-    Assert(edit.Value = ".", "NeoQwertz Mod4+physical Ö was not Noted dot: " edit.Value)
+    InjectScan(0x2B), Sleep(25), TapScan(0x1A), InjectScan(0x2B, true), Sleep(40)
+    Assert(edit.Value = "ſ", "NeoQwertz right Mod3 # did not select symbol layer: " edit.Value)
     edit.Value := "", edit.Focus()
-    StartPhysicalCompose(), TapScan(0x18), TapScan(0x2E) ; O, C
-    Assert(edit.Value = "©", "CapsLock+Ä Compose did not use QWERTZ O,C: " edit.Value)
+    InjectScan(0x2A), InjectScan(0x3A), Sleep(25), TapScan(0x1E)
+    InjectScan(0x3A, true), InjectScan(0x2A, true), Sleep(40)
+    Assert(edit.Value = "α", "NeoQwertz layer 5 A did not type alpha: " edit.Value)
+    edit.Value := "", edit.Focus()
+    InjectScan(0x3A), InjectScan(0x56), Sleep(25), TapScan(0x1E)
+    InjectScan(0x56, true), InjectScan(0x3A, true), Sleep(40)
+    Assert(edit.Value = "∀", "NeoQwertz layer 6 A did not type forall: " edit.Value)
+    edit.Value := "", edit.Focus()
+    StartPhysicalCompose(), TapScan(0x18), TapScan(0x2E)
+    Assert(edit.Value = "©", "CapsLock+# Compose failed: " edit.Value)
     edit.Value := "", edit.Focus()
     StartPhysicalCompose(true), TapScan(0x18), TapScan(0x2E)
-    Assert(edit.Value = "©", "Ä+CapsLock Compose order failed: " edit.Value)
+    Assert(edit.Value = "©", "#+CapsLock Compose order failed: " edit.Value)
     edit.Value := "", edit.Focus()
-    TapScan(0x2B), TapScan(0x12) ; Noted dead acute, QWERTZ E
-    Assert(edit.Value = "é", "Noted acute key + QWERTZ E failed: " edit.Value)
+    TapScan(0x1B), TapScan(0x12)
+    Assert(edit.Value = "é", "NeoQwertz acute at physical + followed by E failed: " edit.Value)
     edit.Value := "", edit.Focus()
     InjectScan(0x3A), Sleep(25), TapScan(0x0F), InjectScan(0x3A, true), Sleep(40)
     TapScan(0x18), TapScan(0x2E)
-    Assert(edit.Value = "©", "Mod3+Tab Compose did not use shared engine: " edit.Value)
+    Assert(edit.Value = "©", "Left Mod3+Tab Compose failed: " edit.Value)
+    edit.Value := "", edit.Focus()
+    InjectScan(0x2B), Sleep(25), TapScan(0x0F), InjectScan(0x2B, true), Sleep(40)
+    TapScan(0x18), TapScan(0x2E)
+    Assert(edit.Value = "©", "Right Mod3+Tab Compose failed: " edit.Value)
+    FileAppend("PASS: full NeoQwertz: ordinary A-umlaut; right Mod3 on #; QWERTZ Greek/math; Compose both orders and both Mod3+Tab; acute at physical +.`n", "*")
 
     ; Entrance, atomic alpha frame, focus/style, and current-size retarget.
     TogglePause("direct")

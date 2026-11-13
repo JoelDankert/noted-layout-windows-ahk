@@ -97,7 +97,7 @@ SaveSelectedLayout(name) {
 ApplyLayoutData(name) {
     global Layout, RightMod3Key
     Layout := name = "NeoQwertz" ? BuildNeoQwertzData() : BuildNotedData()
-    RightMod3Key := "sc028"
+    RightMod3Key := name = "NeoQwertz" ? "sc02B" : "sc028"
 }
 
 InstallHotkeys() {
@@ -395,7 +395,7 @@ SelectLayout(name, *) {
         ClearTrackedState()
         Suspend(false)
         ApplyLayoutData(name)
-        ConfigureRightMod3("sc028")
+        ConfigureRightMod3(name = "NeoQwertz" ? "sc02B" : "sc028")
         SelectedLayout := name
         IsPaused := false
         EnableCapsLockGuard()

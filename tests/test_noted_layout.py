@@ -85,7 +85,7 @@ class NotedDistributionTests(unittest.TestCase):
         expected = {
             "sc010": ('q', 'ϕ', 'ℚ'), "sc015": ('z', 'ζ', 'ℤ'),
             "sc01E": ('a', 'α', '∀'), "sc023": ('h', 'ψ', 'Ψ'),
-            "sc028": ('ä', 'η', 'ℵ'), "sc02C": ('y', 'υ', '∇'),
+            "sc02C": ('y', 'υ', '∇'),
             "sc016": ('u', 'ψ', '⊂'), "sc01A": ('ü', 'ς', '∪'),
             "sc02F": ('v', 'π', '√'),
             "sc035": ('-', '‑', '\u00ad'),
@@ -96,9 +96,10 @@ class NotedDistributionTests(unittest.TestCase):
                 self.assertIn(f'"{key}"', neo)
                 for value_ in values:
                     self.assertIn(f'"{value_}"', neo)
-        self.assertIn('data["sc028"] := [1, "ä", "Ä", "@", ".", "η", "ℵ", "S__NDot"', neo)
-        self.assertIn('data["sc02B"] := [0, "", "", "", "", "", "", "", ""]', neo)
-        self.assertIn('RightMod3Key := name = "NeoQwertz" ? "sc02B" : "sc028"', ENTRY)
+        self.assertNotIn('data["sc028"] :=', neo)
+        self.assertNotIn('data["sc02B"] :=', neo)
+        self.assertNotIn('data["sc01B"] :=', neo)
+        self.assertIn('RightMod3Key := "sc028"', ENTRY)
 
     def test_selection_persistence_pause_resume_and_mutex_contract(self):
         self.assertIn('#SingleInstance Off', ENTRY)

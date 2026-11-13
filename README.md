@@ -7,13 +7,13 @@ Eine bewusst minimale AutoHotkey-v2-Distribution für **Noted** und **NeoQwertz*
 AutoHotkey v2 installieren und `noted.ahk` starten. Erwartet wird das deutsche QWERTZ-Windows-Tastaturlayout.
 
 - linkes Mod3: physische CapsLock-Taste
-- rechtes Mod3: bei Noted `Ä` (`SC028`), bei NeoQwertz `#` (`SC02B`)
+- rechtes Mod3: physische `Ä`-Taste (`SC028`)
 - Mod4: ISO-`<>` und rechte Alt-Taste
-- Akut-/Tilde-/Strich-Tottaste: bei Noted `#` (`SC02B`), bei NeoQwertz `+` (`SC01B`)
+- Akut-/Tilde-/Strich-Tottaste: physische `#`-Taste (`SC02B`)
 - beide Shift-Tasten: Shift-Lock; beide Mod4-Tasten: Mod4-Lock
 - `Strg+Ende`: pausieren/fortsetzen (auch während Suspend erreichbar)
 
-Das Traymenü wählt Noted oder NeoQwertz und markiert die aktuelle Auswahl. Ein Wechsel aktiviert die neue Belegung sofort, auch aus dem pausierten Zustand; `Strg+Ende` pausiert beziehungsweise aktiviert danach diese Auswahl. Sie wird unter `%APPDATA%\NotedLayoutWindowsAhk\settings.ini` gespeichert, bei fehlender oder ungültiger Datei gilt Noted. In NeoQwertz schreibt die Ä-Taste normal `ä`/`Ä`.
+Das Traymenü wählt Noted oder NeoQwertz und markiert die aktuelle Auswahl. Ein Wechsel aktiviert die neue Belegung sofort, auch aus dem pausierten Zustand; `Strg+Ende` pausiert beziehungsweise aktiviert danach diese Auswahl. Sie wird unter `%APPDATA%\NotedLayoutWindowsAhk\settings.ini` gespeichert, bei fehlender oder ungültiger Datei gilt Noted. Auch in NeoQwertz bleibt die physische Ä-Taste wie in Noted für rechtes Mod3 und Compose reserviert; nur die folgenden Buchstaben werden als QWERTZ interpretiert.
 
 Eine zweite Instanz – auch aus einem anderen Verzeichnis – zeigt `Noted läuft bereits.` und beendet sich, ohne die laufende Belegung oder CapsLock anzufassen. „Neu laden“ im Tray bleibt möglich.
 

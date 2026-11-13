@@ -34,6 +34,21 @@ InjectKey(vk, up := false) {
     DllCall("keybd_event", "UChar", vk, "UChar", 0, "UInt", flags, "UPtr", 0)
 }
 
+InjectScan(scan, up := false) {
+    DllCall("keybd_event", "UChar", 0, "UChar", scan, "UInt", 0x8 | (up ? 2 : 0), "UPtr", 0)
+}
+
+TapScan(scan) {
+    InjectScan(scan), Sleep(25), InjectScan(scan, true), Sleep(40)
+}
+
+StartPhysicalCompose(rightFirst := false) {
+    first := rightFirst ? 0x28 : 0x3A
+    second := rightFirst ? 0x3A : 0x28
+    InjectScan(first), Sleep(25), InjectScan(second), Sleep(25)
+    InjectScan(second, true), InjectScan(first, true), Sleep(50)
+}
+
 FramePixel(x, y) {
     global PauseOsdBits
     return NumGet(PauseOsdBits + (y * 256 + x) * 4, "UInt")
@@ -70,6 +85,23 @@ VerifyOsd() {
     WinActivate(target)
     Sleep(100)
     focused := WinExist("A")
+
+    ; NeoQwertz retains Noted's physical Compose/dead-key roles. Only subsequent
+    ; letter interpretation changes to QWERTZ; exercise the actual registered hooks.
+    SelectLayout("NeoQwertz")
+    edit.Value := "", edit.Focus()
+    StartPhysicalCompose(), TapScan(0x18), TapScan(0x2E) ; O, C
+    Assert(edit.Value = "©", "CapsLock+Ä Compose did not use QWERTZ O,C: " edit.Value)
+    edit.Value := "", edit.Focus()
+    StartPhysicalCompose(true), TapScan(0x18), TapScan(0x2E)
+    Assert(edit.Value = "©", "Ä+CapsLock Compose order failed: " edit.Value)
+    edit.Value := "", edit.Focus()
+    TapScan(0x2B), TapScan(0x12) ; Noted dead acute, QWERTZ E
+    Assert(edit.Value = "é", "Noted acute key + QWERTZ E failed: " edit.Value)
+    edit.Value := "", edit.Focus()
+    InjectScan(0x3A), Sleep(25), TapScan(0x0F), InjectScan(0x3A, true), Sleep(40)
+    TapScan(0x18), TapScan(0x2E)
+    Assert(edit.Value = "©", "Mod3+Tab Compose did not use shared engine: " edit.Value)
 
     ; Entrance, atomic alpha frame, focus/style, and current-size retarget.
     TogglePause("direct")

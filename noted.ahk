@@ -377,6 +377,8 @@ InstallTray() {
     SetTrayIcon(true)
     A_TrayMenu.Delete()
     A_TrayMenu.Add("Pausieren (Strg+Ende)", TogglePause)
+    A_TrayMenu.Default := "Pausieren (Strg+Ende)"
+    A_TrayMenu.ClickCount := 2
     A_TrayMenu.Add()
     A_TrayMenu.Add("Noted", SelectLayout.Bind("Noted"))
     A_TrayMenu.Add("NeoQwertz", SelectLayout.Bind("NeoQwertz"))

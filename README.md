@@ -13,7 +13,7 @@ AutoHotkey v2 installieren und `noted.ahk` starten. Erwartet wird das deutsche Q
 - beide Shift-Tasten: Shift-Lock; beide Mod4-Tasten: Mod4-Lock
 - `Strg+Ende`: pausieren/fortsetzen (auch während Suspend erreichbar)
 
-Das Traymenü wählt Noted oder NeoQwertz und markiert die aktuelle Auswahl. Ein Wechsel aktiviert die neue Belegung sofort, auch aus dem pausierten Zustand; `Strg+Ende` pausiert beziehungsweise aktiviert danach diese Auswahl. Sie wird unter `%APPDATA%\NotedLayoutWindowsAhk\settings.ini` gespeichert, bei fehlender oder ungültiger Datei gilt Noted. In NeoQwertz schreibt die Ä-Taste normal `ä`/`Ä`.
+Das Traymenü wählt Noted oder NeoQwertz und markiert die aktuelle Auswahl. Ein Doppelklick auf das Tray-Icon pausiert beziehungsweise setzt fort, genau wie `Strg+Ende`; ein einzelner Klick behält das normale Tray-Verhalten. Ein Wechsel aktiviert die neue Belegung sofort, auch aus dem pausierten Zustand; `Strg+Ende` pausiert beziehungsweise aktiviert danach diese Auswahl. Sie wird unter `%APPDATA%\NotedLayoutWindowsAhk\settings.ini` gespeichert, bei fehlender oder ungültiger Datei gilt Noted. In NeoQwertz schreibt die Ä-Taste normal `ä`/`Ä`.
 
 Eine zweite Instanz – auch aus einem anderen Verzeichnis – zeigt `Noted läuft bereits.` und beendet sich, ohne die laufende Belegung oder CapsLock anzufassen. „Neu laden“ im Tray bleibt möglich.
 

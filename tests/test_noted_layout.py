@@ -113,6 +113,9 @@ class NotedDistributionTests(unittest.TestCase):
         self.assertIn('A_TrayMenu.Add("Noted"', ENTRY)
         self.assertIn('A_TrayMenu.Add("NeoQwertz"', ENTRY)
         self.assertIn('A_TrayMenu.Check(SelectedLayout)', ENTRY)
+        self.assertIn('A_TrayMenu.Add("Pausieren (Strg+Ende)", TogglePause)', ENTRY)
+        self.assertIn('A_TrayMenu.Default := "Pausieren (Strg+Ende)"', ENTRY)
+        self.assertIn('A_TrayMenu.ClickCount := 2', ENTRY)
         self.assertIn('A_TrayMenu.Check("Pausieren (Strg+Ende)")', ENTRY)
 
     def test_complete_resolved_table_is_pinned(self):

@@ -6,6 +6,8 @@ Eine bewusst minimale AutoHotkey-v2-Distribution für **Noted** und **NeoQwertz*
 
 AutoHotkey v2 installieren und `noted.ahk` starten. Erwartet wird das deutsche QWERTZ-Windows-Tastaturlayout.
 
+Die Zeichenausgabe verwendet nach Möglichkeit native Tastendrücke und fällt für nicht verfügbare Zeichen automatisch auf Unicode zurück.
+
 - linkes Mod3: physische CapsLock-Taste
 - rechtes Mod3: bei Noted `Ä` (`SC028`), bei NeoQwertz `#` (`SC02B`)
 - Mod4: ISO-`<>` und rechte Alt-Taste

@@ -310,7 +310,7 @@ EmitEncoded(encoded) {
     while pos <= StrLen(encoded) {
         token := SubStr(encoded, pos, 7)
         if SubStr(token, 1, 1) = "U"
-            SendText(Chr(("0x" SubStr(token, 2)) + 0))
+            Send("{Raw}" Chr(("0x" SubStr(token, 2)) + 0))
         else if SubStr(token, 1, 2) = "S_"
             SendAction(token)
         pos += 7
